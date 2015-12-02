@@ -61,7 +61,7 @@ void cmd_FREQ_cb(const SCPI_argval_t *args)
 int main()
 {
 	//const char *inp = "*IDN?\n";
-	const char *inp = "FREQ 123\n";
+	const char *inp = "FREQ 50\n";
 
 	for(int i=0;i<strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
