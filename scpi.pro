@@ -8,7 +8,10 @@ SOURCES += \
     main.c
 
 DISTFILES += \
-    style.astylerc
+    style.astylerc \
+    .gitignore \
+    LICENSE \
+    README.md
 
 HEADERS += \
     scpi_parser.h
