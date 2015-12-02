@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "scpi_parser.h"
 
@@ -15,7 +16,7 @@ const SCPI_command_t scpi_cmd_lang[4] = {
 		.callback = cmd_aIDNq_cb
 	},
 	{
-		.level_cnt = 2, .levels = {"APPLy", "SINe"},
+		.level_cnt = 3, .levels = {"APPLy", "SINe"},
 		.param_cnt = 3, .params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_SIN_cb
 	},
@@ -57,9 +58,15 @@ void cmd_FREQ_cb(const SCPI_argval_t *args)
 
 
 
-int main(int argc, const char**argv)
+int main()
 {
-	const char *inp = argv[1];
+	//const char *inp = "*IDN?\n";
+	const char *inp = "FREQ 123\n";
+
+	for(int i=0;i<strlen(inp); i++) {
+		scpi_handle_byte(inp[i]);
+	}
+
 
 //	printf("%d\n", char_equals_ci('a','A'));
 //	printf("%d\n", char_equals_ci('z','z'));

@@ -49,4 +49,4 @@ extern const uint16_t scpi_cmd_lang_len; // number of commands
 extern const SCPI_command_t scpi_cmd_lang[];
 
 // --------------- functions --------------------
-
+void scpi_handle_byte(const uint8_t b);
