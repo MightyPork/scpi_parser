@@ -7,8 +7,8 @@ void cmd_APPL_SIN_cb(const SCPI_argval_t *args);
 void cmd_APPL_TRI_cb(const SCPI_argval_t *args);
 void cmd_FREQ_cb(const SCPI_argval_t *args);
 
-
-const SCPI_command_t scpi_cmd_lang[] = {
+const uint16_t scpi_cmd_lang_len = 4;
+const SCPI_command_t scpi_cmd_lang[4] = {
 	{
 		.level_cnt = 1, .levels = {"*IDN?"},
 		.param_cnt = 0, .params = {},
@@ -60,5 +60,19 @@ void cmd_FREQ_cb(const SCPI_argval_t *args)
 int main(int argc, const char**argv)
 {
 	const char *inp = argv[1];
-	printf("cmd lang len = %d\n", (int) sizeof(scpi_cmd_lang)/sizeof(SCPI_command_t));
+
+//	printf("%d\n", char_equals_ci('a','A'));
+//	printf("%d\n", char_equals_ci('z','z'));
+//	printf("%d\n", char_equals_ci('z','Z'));
+//	printf("%d\n", char_equals_ci('M','M'));
+//	printf("%d\n", char_equals_ci('M','q'));
+//	printf("%d\n", char_equals_ci('*','*'));
+//	printf("%d\n", char_equals_ci('a',' '));
+
+//	printf("%d\n", level_str_matches("A","A"));
+//	printf("%d\n", level_str_matches("AbCdE","ABCDE"));
+//	printf("%d\n", level_str_matches("*IDN?","*IDN?"));
+//	printf("%d\n", level_str_matches("*IDN?","*IDN"));
+//	printf("%d\n", level_str_matches("MEAS","MEASure"));
+	//printf("%d\n", level_str_matches("*FBAZ?","*FxyzBAZ?"));
 }

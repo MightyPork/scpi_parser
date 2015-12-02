@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 typedef enum {
 	PARS_COMMAND,
 	PARS_ARG, // collect generic arg, terminated with comma or newline. Leading and trailing whitespace ignored.
@@ -60,9 +59,14 @@ static void pars_match_level(void); // match charbuf content to a level, advance
 // char matching
 #define INRANGE(c, a, b) ((c) >= (a) && (c) <= (b))
 #define IS_WHITESPACE(c) (INRANGE((c), 0, 9) || INRANGE((c), 11, 32))
-#define IS_IDENT_CHAR(c) (INRANGE((c), 'a', 'z') || INRANGE((c), 'A', 'Z') || INRANGE((c), '0', '9') || (c) == '_')
-#define IS_INT_CHAR(c) INRANGE((c), '0', '9')
-#define IS_FLOAT_CHAR(c) (IS_INT_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (e) == '+' || (e) == '-')
+
+#define IS_LCASE_CHAR(c) INRANGE((c), 'a', 'z')
+#define IS_UCASE_CHAR(c) INRANGE((c), 'A', 'Z')
+#define IS_NUMBER_CHAR(c) INRANGE((c), '0', '9')
+
+#define IS_IDENT_CHAR(c) (IS_LCASE_CHAR((c)) || IS_UCASE_CHAR((c)) || IS_NUMBER_CHAR((c)) || (c) == '_')
+#define IS_INT_CHAR(c) IS_NUMBER_CHAR((c))
+#define IS_FLOAT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (e) == '+' || (e) == '-')
 
 
 static void pars_reset_cmd(void)
@@ -123,7 +127,7 @@ void scpi_receive_byte(const uint8_t b)
 				// invalid or delimiter
 
 				if (IS_WHITESPACE(c)) {
-					pars_cmd_space(); // whitespace in command - end of command?
+//					pars_cmd_space(); // whitespace in command - end of command?
 					break;
 				}
 
@@ -133,11 +137,11 @@ void scpi_receive_byte(const uint8_t b)
 						break;
 
 					case '\n': // line terminator
-						pars_cmd_newline();
+//						pars_cmd_newline();
 						break;
 
 					case ';': // ends a command, does not reset cmd path.
-						pars_cmd_semicolon();
+//						pars_cmd_semicolon();
 						break;
 
 					default:
@@ -159,9 +163,6 @@ void scpi_receive_byte(const uint8_t b)
 }
 
 
-// whitespace (INRANGE(c, 0, 9) || INRANGE(c, 11, 32))
-
-
 static void pars_cmd_colon(void)
 {
 	if (pstate.charbuf_ptr == 0) {
@@ -181,6 +182,71 @@ static void pars_cmd_colon(void)
 		pars_match_level();
 	}
 }
+
+#define CHAR_TO_LOWER(ucase) ((ucase) + 32)
+#define CHAR_TO_UPPER(lcase) ((lcase) - 32)
+
+
+/** Check if chars equal, ignore case */
+static bool char_equals_ci(char a, char b)
+{
+	if (IS_LCASE_CHAR(a)) {
+
+		if (IS_LCASE_CHAR(b)) {
+			return a == b;
+		} else if (IS_UCASE_CHAR(b)) {
+			return a == CHAR_TO_LOWER(b);
+		} else {
+			return false;
+		}
+
+	} else if (IS_UCASE_CHAR(a)) {
+
+		if (IS_UCASE_CHAR(b)) {
+			return a == b;
+		} else if (IS_LCASE_CHAR(b)) {
+			return a == CHAR_TO_UPPER(b);
+		} else {
+			return false;
+		}
+
+	} else {
+		return a == b; // exact match, not letters
+	}
+}
+
+
+/** Check if command matches a pattern */
+static bool level_str_matches(const char *test, const char *pattern)
+{
+	const uint8_t testlen = strlen(test);
+	uint8_t pi, ti;
+	for (pi = 0, ti = 0; pi < strlen(pattern); pi++) {
+		if (ti > testlen) return false; // not match
+
+		const char pc = pattern[pi];
+		const char tc = test[ti]; // may be at the \0 terminator
+
+		if (IS_LCASE_CHAR(pc)) {
+			// optional char
+			if (char_equals_ci(pc, tc)) {
+				ti++; // advance test string
+			}
+
+			continue; // next pi - tc stays in place
+		} else {
+			// require exact match (case insensitive)
+			if (char_equals_ci(pc, tc)) {
+				ti++;
+			} else {
+				return false;
+			}
+		}
+	}
+
+	return (ti >= testlen);
+}
+
 
 
 static void pars_match_level(void)
