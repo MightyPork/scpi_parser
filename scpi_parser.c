@@ -249,7 +249,7 @@ void scpi_handle_byte(const uint8_t b)
 			}
 			break;
 
-		// TODO more states
+			// TODO more states
 	}
 }
 
@@ -272,7 +272,7 @@ static void pars_cmd_colon(void)
 	} else {
 		// internal colon - partial match
 		if (pars_match_cmd(true)) {
-			printf("OK partial cmd, last segment = %s\n", pst.cur_levels[pst.cur_level_i - 1]);
+			// ok
 		} else {
 			printf("ERROR no such command (colon).\n");//TODO error
 			pst.state = PARS_DISCARD_LINE;
@@ -322,7 +322,7 @@ static void pars_cmd_space(void)
 			pst.state = PARS_ARG;
 		}
 	} else {
-		printf("ERROR no such command (space) %s.\n", pst.charbuf);//TODO error
+		printf("ERROR no such command: %s.\n", pst.charbuf);//TODO error
 		pst.state = PARS_DISCARD_LINE;
 	}
 }
@@ -485,8 +485,8 @@ static void pars_arg_char(char c)
 			break;
 
 		case SCPI_DT_INT:
-			if (!IS_FLOAT_CHAR(c)) {
-				printf("ERROR unexpected char '%d' in int.\n", c);//TODO error
+			if (!IS_INT_CHAR(c)) {
+				printf("ERROR unexpected char '%c' in int.\n", c);//TODO error
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
@@ -507,6 +507,12 @@ static void pars_arg_comma(void)
 		// it was the last argument
 		// comma illegal
 		printf("ERROR unexpected comma after the last argument\n");//TODO error
+		pst.state = PARS_DISCARD_LINE;
+		return;
+	}
+
+	if (pst.charbuf_i == 0) {
+		printf("ERROR empty argument is not allowed.\n");//TODO error
 		pst.state = PARS_DISCARD_LINE;
 		return;
 	}
@@ -567,6 +573,7 @@ static void arg_convert_value(void)
 
 		case SCPI_DT_INT:
 			j = sscanf(pst.charbuf, "%d", &dest->INT);
+
 			if (j == 0) {
 				printf("ERROR failed to convert %s to INT\n", pst.charbuf);//TODO error
 				pst.state = PARS_DISCARD_LINE;

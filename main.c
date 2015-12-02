@@ -7,9 +7,10 @@ void cmd_aIDNq_cb(const SCPI_argval_t *args);
 void cmd_APPL_SIN_cb(const SCPI_argval_t *args);
 void cmd_APPL_TRI_cb(const SCPI_argval_t *args);
 void cmd_FREQ_cb(const SCPI_argval_t *args);
+void cmd_DISP_TEXT_cb(const SCPI_argval_t *args);
 
-const uint16_t scpi_cmd_lang_len = 4;
-const SCPI_command_t scpi_cmd_lang[4] = {
+const uint16_t scpi_cmd_lang_len = 5;
+const SCPI_command_t scpi_cmd_lang[5] = {
 	{
 		.level_cnt = 1, .levels = {"*IDN?"},
 		.param_cnt = 0, .params = {},
@@ -29,6 +30,11 @@ const SCPI_command_t scpi_cmd_lang[4] = {
 		.level_cnt = 1, .levels = {"FREQuency"},
 		.param_cnt = 1, .params = {SCPI_DT_INT},
 		.callback = cmd_FREQ_cb
+	},
+	{
+		.level_cnt = 2, .levels = {"DISPlay", "TEXT"},
+		.param_cnt = 2, .params = {SCPI_DT_STRING, SCPI_DT_BOOL},
+		.callback = cmd_DISP_TEXT_cb
 	},
 };
 
@@ -53,15 +59,20 @@ void cmd_APPL_TRI_cb(const SCPI_argval_t *args)
 
 void cmd_FREQ_cb(const SCPI_argval_t *args)
 {
-	printf("cb  FREQuency\n");
+	printf("cb  FREQuency %d\n", args[0].INT);
 }
 
+void cmd_DISP_TEXT_cb(const SCPI_argval_t *args)
+{
+	printf("cb  DISPlay:TEXT %s, %d\n", args[0].STRING, args[1].BOOL);
+}
 
 
 int main()
 {
-	//const char *inp = "*IDN?\n";
-	const char *inp = "FREQ 50\n";
+//	const char *inp = "*IDN?\n";
+//	const char *inp = "FREQ 50\n";
+	const char *inp = "DISPlay:TEXT 'banana', OFF\nFUBAR moo fuck\r\nFREQ 50\r\n";
 
 	for(int i=0;i<strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
