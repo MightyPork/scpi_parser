@@ -35,7 +35,7 @@ const SCPI_command_t scpi_cmd_lang[] = {
 		.params = {SCPI_DT_STRING, SCPI_DT_BOOL},
 		.callback = cmd_DISP_TEXT_cb
 	},
-	{0} // mark end
+	{0} // end marker
 };
 
 
@@ -72,7 +72,7 @@ int main()
 {
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-	const char *inp = "DISPlay:TEXT 'banana', OFF\nFUBAR moo fuck\r\nFREQ 50\r\n";
+	const char *inp = "DISPlay:TEXT 'banana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
