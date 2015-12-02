@@ -33,10 +33,9 @@ typedef union {
 
 /** SCPI command preset */
 typedef struct {
-	const uint8_t level_cnt; // number of used command levels (colons + 1)
-	const char levels[MAX_LEVEL_COUNT][MAX_CMD_LEN]; // up to 4 parts
+	// NOTE: command array is terminated by {0} - zero in levels[0][0]
 
-	const uint8_t param_cnt; // parameter count
+	const char levels[MAX_LEVEL_COUNT][MAX_CMD_LEN]; // up to 4 parts
 	const SCPI_datatype_t params[MAX_PARAM_COUNT]; // parameter types (0 for unused)
 
 	// called when the command is completed. BLOB arg must be last in the argument list,
@@ -44,8 +43,7 @@ typedef struct {
 	void (*callback)(const SCPI_argval_t * args);
 } SCPI_command_t;
 
-
-extern const uint16_t scpi_cmd_lang_len; // number of commands
+// Zero terminated command struct array
 extern const SCPI_command_t scpi_cmd_lang[];
 
 // --------------- functions --------------------

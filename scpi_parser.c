@@ -65,6 +65,9 @@ static void pars_arg_char(char c);
 static void pars_arg_comma(void);
 static void pars_arg_newline(void);
 
+static uint8_t cmd_param_count(const SCPI_command_t *cmd);
+static uint8_t cmd_level_count(const SCPI_command_t *cmd);
+
 static bool try_match_cmd(const SCPI_command_t *cmd, bool partial);
 static void charbuf_terminate(void);
 static void charbuf_append(char c);
@@ -115,6 +118,30 @@ static void pars_reset_cmd_keeplevel(void)
 
 	pst.matched_cmd = NULL;
 	pst.arg_i = 0;
+}
+
+
+static uint8_t cmd_param_count(const SCPI_command_t *cmd)
+{
+	for (uint8_t i = 0; i < MAX_PARAM_COUNT; i++) {
+		if (cmd->params[i] == SCPI_DT_NONE) {
+			return i;
+		}
+	}
+
+	return MAX_PARAM_COUNT;
+}
+
+
+static uint8_t cmd_level_count(const SCPI_command_t *cmd)
+{
+	for (uint8_t i = 0; i < MAX_LEVEL_COUNT; i++) {
+		if (cmd->levels[i][0] == 0) {
+			return i;
+		}
+	}
+
+	return MAX_LEVEL_COUNT;
 }
 
 
@@ -292,7 +319,7 @@ static void pars_cmd_newline(void)
 
 	// complete match
 	if (pars_match_cmd(false)) {
-		if (pst.matched_cmd->param_cnt == 0) {
+		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no param command - OK
 			pst.matched_cmd->callback(pst.args); // args are empty
 		} else {
@@ -315,7 +342,7 @@ static void pars_cmd_space(void)
 	}
 
 	if (pars_match_cmd(false)) {
-		if (pst.matched_cmd->param_cnt == 0) {
+		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no commands
 			pst.state = PARS_TRAILING_WHITE;
 		} else {
@@ -398,11 +425,12 @@ static bool pars_match_cmd(bool partial)
 	char *dest = pst.cur_levels[pst.cur_level_i++];
 	strcpy(dest, pst.charbuf);
 
-	for (uint16_t i = 0; i < scpi_cmd_lang_len; i++) {
+	for (uint16_t i = 0; i < 0xFFFF; i++) {
 
 		const SCPI_command_t *cmd = &scpi_cmd_lang[i];
+		if (cmd->levels[0][0] == 0) break; // end marker
 
-		if (cmd->level_cnt > MAX_LEVEL_COUNT) {
+		if (cmd_level_count(cmd) > MAX_LEVEL_COUNT) {
 			// FAIL, too deep. Bad config
 			continue;
 		}
@@ -426,15 +454,16 @@ static bool pars_match_cmd(bool partial)
 /** Try to match current state to a given command */
 static bool try_match_cmd(const SCPI_command_t *cmd, bool partial)
 {
-	if (pst.cur_level_i > cmd->level_cnt) return false; // command too short
+	const uint8_t level_cnt = cmd_level_count(cmd);
+	if (pst.cur_level_i > level_cnt) return false; // command too short
 	if (pst.cur_level_i == 0) return false; // nothing to match
 
 	if (partial) {
-		if (pst.cur_level_i == cmd->level_cnt) {
+		if (pst.cur_level_i == level_cnt) {
 			return false; // would be exact match
 		}
 	} else {
-		if (pst.cur_level_i != cmd->level_cnt) {
+		if (pst.cur_level_i != level_cnt) {
 			return false; // can be only partial match
 		}
 	}
@@ -503,7 +532,7 @@ static void pars_arg_char(char c)
 /** Received a comma while collecting an arg */
 static void pars_arg_comma(void)
 {
-	if (pst.arg_i == pst.matched_cmd->param_cnt - 1) {
+	if (pst.arg_i == cmd_param_count(pst.matched_cmd) - 1) {
 		// it was the last argument
 		// comma illegal
 		printf("ERROR unexpected comma after the last argument\n");//TODO error
@@ -525,7 +554,7 @@ static void pars_arg_comma(void)
 
 static void pars_arg_newline(void)
 {
-	if (pst.arg_i < pst.matched_cmd->param_cnt - 1) {
+	if (pst.arg_i < cmd_param_count(pst.matched_cmd) - 1) {
 		// not the last arg yet - fail
 		printf("ERROR not enough arguments!\n");//TODO error
 		pst.state = PARS_DISCARD_LINE;

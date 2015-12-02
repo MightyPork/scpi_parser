@@ -9,33 +9,33 @@ void cmd_APPL_TRI_cb(const SCPI_argval_t *args);
 void cmd_FREQ_cb(const SCPI_argval_t *args);
 void cmd_DISP_TEXT_cb(const SCPI_argval_t *args);
 
-const uint16_t scpi_cmd_lang_len = 5;
-const SCPI_command_t scpi_cmd_lang[5] = {
+const SCPI_command_t scpi_cmd_lang[] = {
 	{
-		.level_cnt = 1, .levels = {"*IDN?"},
-		.param_cnt = 0, .params = {},
+		.levels = {"*IDN?"},
+		.params = {},
 		.callback = cmd_aIDNq_cb
 	},
 	{
-		.level_cnt = 3, .levels = {"APPLy", "SINe"},
-		.param_cnt = 3, .params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
+		.levels = {"APPLy", "SINe"},
+		.params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_SIN_cb
 	},
 	{
-		.level_cnt = 2, .levels = {"APPLy", "TRIangle"},
-		.param_cnt = 3, .params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
+		.levels = {"APPLy", "TRIangle"},
+		.params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_TRI_cb
 	},
 	{
-		.level_cnt = 1, .levels = {"FREQuency"},
-		.param_cnt = 1, .params = {SCPI_DT_INT},
+		.levels = {"FREQuency"},
+		.params = {SCPI_DT_INT},
 		.callback = cmd_FREQ_cb
 	},
 	{
-		.level_cnt = 2, .levels = {"DISPlay", "TEXT"},
-		.param_cnt = 2, .params = {SCPI_DT_STRING, SCPI_DT_BOOL},
+		.levels = {"DISPlay", "TEXT"},
+		.params = {SCPI_DT_STRING, SCPI_DT_BOOL},
 		.callback = cmd_DISP_TEXT_cb
 	},
+	{0} // mark end
 };
 
 
@@ -74,7 +74,7 @@ int main()
 //	const char *inp = "FREQ 50\n";
 	const char *inp = "DISPlay:TEXT 'banana', OFF\nFUBAR moo fuck\r\nFREQ 50\r\n";
 
-	for(int i=0;i<strlen(inp); i++) {
+	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
 	}
 
