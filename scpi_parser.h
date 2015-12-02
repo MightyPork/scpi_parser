@@ -26,7 +26,7 @@ typedef union {
 	float FLOAT;
 	int32_t INT;
 	bool BOOL;
-	char STRING[MAX_STRING_LEN];
+	char STRING[MAX_STRING_LEN+1]; // terminator
 	uint32_t BLOB;
 } SCPI_argval_t;
 

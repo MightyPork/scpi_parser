@@ -254,141 +254,6 @@ void scpi_handle_byte(const uint8_t b)
 }
 
 
-/** Non-whitespace and non-comma char received in arg. */
-static void pars_arg_char(char c)
-{
-	switch (pst.matched_cmd->params[pst.arg_i]) {
-		case SCPI_DT_STRING:
-			if (c == '\'') {
-				pst.state = PARS_ARG_STR_APOS;
-			} else if (c == '"') {
-				pst.state = PARS_ARG_STR_QUOT;
-			} else {
-				printf("ERROR unexpected char '%c', should be ' or \"\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		case SCPI_DT_BLOB:
-			if (c == '#') {
-				pst.state = PARS_ARG_BLOB_PREAMBLE;
-				pst.blob_preamble_cnt = 0;
-			} else {
-				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		case SCPI_DT_FLOAT:
-			if (!IS_FLOAT_CHAR(c)) {
-				printf("ERROR unexpected char '%c' in float.\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			} else {
-				charbuf_append(c);
-			}
-			break;
-
-		case SCPI_DT_INT:
-			if (!IS_FLOAT_CHAR(c)) {
-				printf("ERROR unexpected char '%d' in int.\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			} else {
-				charbuf_append(c);
-			}
-			break;
-
-		default:
-			charbuf_append(c);
-			break;
-	}
-}
-
-
-/** Received a comma while collecting an arg */
-static void pars_arg_comma(void)
-{
-	if (pst.arg_i == pst.matched_cmd->param_cnt - 1) {
-		// it was the last argument
-		// comma illegal
-		printf("ERROR unexpected comma after the last argument\n");//TODO error
-		pst.state = PARS_DISCARD_LINE;
-		return;
-	}
-
-	// Convert to the right type
-
-	arg_convert_value();
-}
-
-
-static void pars_arg_newline(void)
-{
-	if (pst.arg_i < pst.matched_cmd->param_cnt - 1) {
-		// not the last arg yet - fail
-		printf("ERROR not enough arguments!\n");//TODO error
-		pst.state = PARS_DISCARD_LINE;
-		return;
-	}
-
-	arg_convert_value();
-	pars_run_callback();
-
-	pars_reset_cmd(); // start a new command
-}
-
-
-/** Convert BOOL, FLOAT or INT char to arg type and advance to next */
-static void arg_convert_value(void)
-{
-	charbuf_terminate();
-
-	SCPI_argval_t *dest = &pst.args[pst.arg_i];
-	int j;
-
-	switch (pst.matched_cmd->params[pst.arg_i]) {
-		case SCPI_DT_BOOL:
-			if (strcasecmp(pst.charbuf, "1") == 0) {
-				dest->BOOL = 1;
-			} else if (strcasecmp(pst.charbuf, "0") == 0) {
-				dest->BOOL = 0;
-			} else if (strcasecmp(pst.charbuf, "ON") == 0) {
-				dest->BOOL = 1;
-			} else if (strcasecmp(pst.charbuf, "OFF") == 0) {
-				dest->BOOL = 0;
-			} else {
-				printf("ERROR argument mismatch for type BOOL\n");//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		case SCPI_DT_FLOAT:
-			j = sscanf(pst.charbuf, "%f", &dest->FLOAT);
-			if (j == 0) {
-				printf("ERROR failed to convert %s to FLOAT\n", pst.charbuf);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		case SCPI_DT_INT:
-			j = sscanf(pst.charbuf, "%d", &dest->INT);
-			if (j == 0) {
-				printf("ERROR failed to convert %s to INT\n", pst.charbuf);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		// TODO string
-
-		default:
-			// impossible
-			printf("ERROR unexpected data type\n");//TODO error
-			pst.state = PARS_DISCARD_LINE;
-	}
-
-	// proceed to next argument
-	pst.arg_i++;
-}
-
 /** Colon received when collecting command parts */
 static void pars_cmd_colon(void)
 {
@@ -582,4 +447,148 @@ static bool try_match_cmd(const SCPI_command_t *cmd, bool partial)
 	}
 
 	return true;
+}
+
+
+/** Non-whitespace and non-comma char received in arg. */
+static void pars_arg_char(char c)
+{
+	switch (pst.matched_cmd->params[pst.arg_i]) {
+		case SCPI_DT_STRING:
+			if (c == '\'') {
+				pst.state = PARS_ARG_STR_APOS;
+			} else if (c == '"') {
+				pst.state = PARS_ARG_STR_QUOT;
+			} else {
+				printf("ERROR unexpected char '%c', should be ' or \"\n", c);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_BLOB:
+			if (c == '#') {
+				pst.state = PARS_ARG_BLOB_PREAMBLE;
+				pst.blob_preamble_cnt = 0;
+			} else {
+				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_FLOAT:
+			if (!IS_FLOAT_CHAR(c)) {
+				printf("ERROR unexpected char '%c' in float.\n", c);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			} else {
+				charbuf_append(c);
+			}
+			break;
+
+		case SCPI_DT_INT:
+			if (!IS_FLOAT_CHAR(c)) {
+				printf("ERROR unexpected char '%d' in int.\n", c);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			} else {
+				charbuf_append(c);
+			}
+			break;
+
+		default:
+			charbuf_append(c);
+			break;
+	}
+}
+
+
+/** Received a comma while collecting an arg */
+static void pars_arg_comma(void)
+{
+	if (pst.arg_i == pst.matched_cmd->param_cnt - 1) {
+		// it was the last argument
+		// comma illegal
+		printf("ERROR unexpected comma after the last argument\n");//TODO error
+		pst.state = PARS_DISCARD_LINE;
+		return;
+	}
+
+	// Convert to the right type
+
+	arg_convert_value();
+}
+
+
+static void pars_arg_newline(void)
+{
+	if (pst.arg_i < pst.matched_cmd->param_cnt - 1) {
+		// not the last arg yet - fail
+		printf("ERROR not enough arguments!\n");//TODO error
+		pst.state = PARS_DISCARD_LINE;
+		return;
+	}
+
+	arg_convert_value();
+	pars_run_callback();
+
+	pars_reset_cmd(); // start a new command
+}
+
+
+/** Convert BOOL, FLOAT or INT char to arg type and advance to next */
+static void arg_convert_value(void)
+{
+	charbuf_terminate();
+
+	SCPI_argval_t *dest = &pst.args[pst.arg_i];
+	int j;
+
+	switch (pst.matched_cmd->params[pst.arg_i]) {
+		case SCPI_DT_BOOL:
+			if (strcasecmp(pst.charbuf, "1") == 0) {
+				dest->BOOL = 1;
+			} else if (strcasecmp(pst.charbuf, "0") == 0) {
+				dest->BOOL = 0;
+			} else if (strcasecmp(pst.charbuf, "ON") == 0) {
+				dest->BOOL = 1;
+			} else if (strcasecmp(pst.charbuf, "OFF") == 0) {
+				dest->BOOL = 0;
+			} else {
+				printf("ERROR argument mismatch for type BOOL\n");//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_FLOAT:
+			j = sscanf(pst.charbuf, "%f", &dest->FLOAT);
+			if (j == 0) {
+				printf("ERROR failed to convert %s to FLOAT\n", pst.charbuf);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_INT:
+			j = sscanf(pst.charbuf, "%d", &dest->INT);
+			if (j == 0) {
+				printf("ERROR failed to convert %s to INT\n", pst.charbuf);//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_STRING:
+			if (strlen(pst.charbuf) > MAX_STRING_LEN) {
+				printf("ERROR string too long.\n");//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			} else {
+				strcpy(dest->STRING, pst.charbuf); // copy the string
+			}
+
+			break;
+
+		default:
+			// impossible
+			printf("ERROR unexpected data type\n");//TODO error
+			pst.state = PARS_DISCARD_LINE;
+	}
+
+	// proceed to next argument
+	pst.arg_i++;
 }
