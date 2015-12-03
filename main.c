@@ -8,6 +8,7 @@ void cmd_APPL_SIN_cb(const SCPI_argval_t *args);
 void cmd_APPL_TRI_cb(const SCPI_argval_t *args);
 void cmd_FREQ_cb(const SCPI_argval_t *args);
 void cmd_DISP_TEXT_cb(const SCPI_argval_t *args);
+void cmd_DATA_BLOB_cb(const SCPI_argval_t *args);
 
 const SCPI_command_t scpi_cmd_lang[] = {
 	{
@@ -34,6 +35,11 @@ const SCPI_command_t scpi_cmd_lang[] = {
 		.levels = {"DISPlay", "TEXT"},
 		.params = {SCPI_DT_STRING, SCPI_DT_BOOL},
 		.callback = cmd_DISP_TEXT_cb
+	},
+	{
+		.levels = {"DATA", "BLOB"},
+		.params = {SCPI_DT_BLOB},
+		.callback = cmd_DATA_BLOB_cb
 	},
 	{0} // end marker
 };
@@ -67,12 +73,19 @@ void cmd_DISP_TEXT_cb(const SCPI_argval_t *args)
 	printf("cb  DISPlay:TEXT %s, %d\n", args[0].STRING, args[1].BOOL);
 }
 
+void cmd_DATA_BLOB_cb(const SCPI_argval_t *args)
+{
+	// noop
+}
+
 
 int main()
 {
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-	const char *inp = "DISPlay:TEXT 'banana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+	//const char *inp = "DISPlay:TEXT 'banana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+
+	const char *inp = "DATA:BLOB #49080\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);

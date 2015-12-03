@@ -64,6 +64,8 @@ static bool pars_match_cmd(bool partial);
 static void pars_arg_char(char c);
 static void pars_arg_comma(void);
 static void pars_arg_newline(void);
+static void pars_arg_semicolon(void);
+static void pars_blob_preamble_char(uint8_t c);
 
 static uint8_t cmd_param_count(const SCPI_command_t *cmd);
 static uint8_t cmd_level_count(const SCPI_command_t *cmd);
@@ -211,7 +213,7 @@ void scpi_handle_byte(const uint8_t b)
 						break;
 
 					case ';': // ends a command, does not reset cmd path.
-//						pars_cmd_semicolon();
+						pars_cmd_semicolon();
 						break;
 
 					default:
@@ -242,7 +244,7 @@ void scpi_handle_byte(const uint8_t b)
 			break; // whitespace discarded
 
 		case PARS_ARG:
-			if (IS_WHITESPACE(c)) break;
+			if (IS_WHITESPACE(c)) break; // discard
 
 			switch (c) {
 				case ',':
@@ -253,15 +255,24 @@ void scpi_handle_byte(const uint8_t b)
 					pars_arg_newline();
 					break;
 
+				case ';':
+					pars_arg_semicolon();
+					break;
+
 				default:
 					pars_arg_char(c);
 			}
 			break;
 
+			// TODO escape sequence in string
+
 		case PARS_ARG_STR_APOS:
 			if (c == '\'') {
 				// end of string
 				pst.state = PARS_ARG; // next will be newline or comma (or ignored spaces)
+			} else if (c == '\n') {
+				printf("ERROR string literal not terminated.\n");//TODO error
+				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
 			}
@@ -271,12 +282,17 @@ void scpi_handle_byte(const uint8_t b)
 			if (c == '"') {
 				// end of string
 				pst.state = PARS_ARG; // next will be newline or comma (or ignored spaces)
+			} else if (c == '\n') {
+				printf("ERROR string literal not terminated.\n");//TODO error
+				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
 			}
 			break;
 
-			// TODO more states
+		case PARS_ARG_BLOB_PREAMBLE:
+			// #<digits><dddddd><BLOB>
+			pars_blob_preamble_char(c);
 	}
 }
 
@@ -308,6 +324,31 @@ static void pars_cmd_colon(void)
 }
 
 
+static void pars_cmd_semicolon(void)
+{
+	if (pst.cur_level_i == 0 && pst.charbuf_i == 0) {
+		// nothing before semicolon
+		printf("ERROR semicolon not allowed here.\n");//TODO error
+		pars_reset_cmd();
+		return;
+	}
+
+	if (pars_match_cmd(false)) {
+		if (cmd_param_count(pst.matched_cmd) == 0) {
+			// no param command - OK
+			pars_run_callback();
+			pars_reset_cmd_keeplevel(); // keep level - that's what semicolon does
+		} else {
+			printf("ERROR command missing arguments.\n");//TODO error
+			pars_reset_cmd();
+		}
+	} else {
+		printf("ERROR no such command %s.\n", pst.charbuf);//TODO error
+		pst.state = PARS_DISCARD_LINE;
+	}
+}
+
+
 /** Newline received when collecting command - end command and execute. */
 static void pars_cmd_newline(void)
 {
@@ -321,13 +362,14 @@ static void pars_cmd_newline(void)
 	if (pars_match_cmd(false)) {
 		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no param command - OK
-			pst.matched_cmd->callback(pst.args); // args are empty
+			pars_run_callback();
+			pars_reset_cmd();
 		} else {
 			printf("ERROR command missing arguments.\n");//TODO error
 			pars_reset_cmd();
 		}
 	} else {
-		printf("ERROR no such command (newline) %s.\n", pst.charbuf);//TODO error
+		printf("ERROR no such command %s.\n", pst.charbuf);//TODO error
 		pst.state = PARS_DISCARD_LINE;
 	}
 }
@@ -568,6 +610,22 @@ static void pars_arg_newline(void)
 }
 
 
+static void pars_arg_semicolon(void)
+{
+	if (pst.arg_i < cmd_param_count(pst.matched_cmd) - 1) {
+		// not the last arg yet - fail
+		printf("ERROR not enough arguments!\n");//TODO error
+		pst.state = PARS_DISCARD_LINE;
+		return;
+	}
+
+	arg_convert_value();
+	pars_run_callback();
+
+	pars_reset_cmd_keeplevel(); // start a new command, keep level
+}
+
+
 /** Convert BOOL, FLOAT or INT char to arg type and advance to next */
 static void arg_convert_value(void)
 {
@@ -627,4 +685,43 @@ static void arg_convert_value(void)
 
 	// proceed to next argument
 	pst.arg_i++;
+}
+
+static void pars_blob_preamble_char(uint8_t c)
+{
+	if (pst.blob_preamble_cnt == 0) {
+		if (!INRANGE(c, '1', '9')) {
+			printf("ERROR expected ASCII 1-9 after #\n");//TODO error
+			pst.state = PARS_DISCARD_LINE;
+			return;
+		}
+
+		pst.blob_preamble_cnt = c - '0'; // 1-9
+	} else {
+		if (c == '\n') {
+			printf("ERROR unexpected newline in blob preamble\n");//TODO error
+			pars_reset_cmd();
+			return;
+		}
+
+		if (!IS_INT_CHAR(c)) {
+			printf("ERROR expected ASCII 0-9 after #n\n");//TODO error
+			pst.state = PARS_DISCARD_LINE;
+			return;
+		}
+
+		charbuf_append(c);
+		if (--pst.blob_preamble_cnt == 0) {
+			// end of preamble sequence
+			charbuf_terminate();
+
+			int bytecnt;
+			sscanf(pst.charbuf, "%d", &bytecnt);
+
+			printf("BLOB byte count = %d\n", bytecnt); // TODO
+
+			// Call handler, enter special blob mode
+			pst.state = PARS_DISCARD_LINE;//FIXME
+		}
+	}
 }

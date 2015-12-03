@@ -11,7 +11,8 @@ DISTFILES += \
     style.astylerc \
     .gitignore \
     LICENSE \
-    README.md
+    README.md \
+    Makefile
 
 HEADERS += \
     scpi_parser.h
