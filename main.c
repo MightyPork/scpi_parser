@@ -11,6 +11,21 @@ void cmd_DISP_TEXT_cb(const SCPI_argval_t *args);
 void cmd_DATA_BLOB_cb(const SCPI_argval_t *args);
 void cmd_DATA_BLOB_data(const uint8_t *bytes);
 
+void cmd_STQENq_cb(const SCPI_argval_t *args)
+{
+	printf("STATUS:QUEUE:ENABLE:NEXT?\n");
+}
+
+void cmd_STQEq_cb(const SCPI_argval_t *args)
+{
+	printf("STATUS:QUEUE:ENABLE?\n");
+}
+
+void cmd_STQE_cb(const SCPI_argval_t *args)
+{
+	printf("STATUS:QUEUE:ENABLE %d\n", args[0].BOOL);
+}
+
 const SCPI_command_t scpi_cmd_lang[] = {
 	{
 		.levels = {"*IDN?"},
@@ -43,6 +58,19 @@ const SCPI_command_t scpi_cmd_lang[] = {
 		.callback = cmd_DATA_BLOB_cb,
 		.blob_chunk = 4,
 		.blob_callback = cmd_DATA_BLOB_data
+	},
+	{
+		.levels = {"STATus", "QUEue", "ENABle", "NEXT?"},
+		.callback = cmd_STQENq_cb
+	},
+	{
+		.levels = {"STATus", "QUEue", "ENABle?"},
+		.callback = cmd_STQEq_cb
+	},
+	{
+		.levels = {"STATus", "QUEue", "ENABle"},
+		.params = {SCPI_DT_BOOL},
+		.callback = cmd_STQE_cb
 	},
 	{0} // end marker
 };
@@ -95,7 +123,8 @@ int main()
 //	const char *inp = "FREQ 50\n";
 	//const char *inp = "DISPlay:TEXT 'banana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
-	const char *inp = "DATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
+	//const char *inp = "DATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
+	const char *inp = "STAT:QUE:ENAB?;ENAB 0;ENAB?;:*IDN?\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
