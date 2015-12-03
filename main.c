@@ -110,11 +110,13 @@ const SCPI_command_t scpi_cmd_lang[] = {
 };
 
 
+
 int main()
 {
+
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-	const char *inp = "DISPlay:TEXT 'ban\\\\'ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
 //	const char *inp = "DATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
 //	const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";

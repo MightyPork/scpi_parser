@@ -49,7 +49,7 @@ static struct {
 	SCPI_argval_t args[MAX_PARAM_COUNT];
 	uint8_t arg_i; // next free argument slot index
 
-} pst; // initialized by all zeros
+} pst = {0}; // initialized by all zeros
 
 
 static void pars_cmd_colon(void); // colon starting a command sub-segment
@@ -79,10 +79,11 @@ static void arg_convert_value(void);
 #define IS_LCASE_CHAR(c) INRANGE((c), 'a', 'z')
 #define IS_UCASE_CHAR(c) INRANGE((c), 'A', 'Z')
 #define IS_NUMBER_CHAR(c) INRANGE((c), '0', '9')
+#define IS_MULTIPLIER_CHAR(c) ((c) == 'k' || (c) == 'M' || (c) == 'G' || (c) == 'm' || (c) == 'u' || (c) == 'n' || (c) == 'p')
 
 #define IS_IDENT_CHAR(c) (IS_LCASE_CHAR((c)) || IS_UCASE_CHAR((c)) || IS_NUMBER_CHAR((c)) || (c) == '_' || (c) == '*' || (c) == '?')
-#define IS_INT_CHAR(c) IS_NUMBER_CHAR((c))
-#define IS_FLOAT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (c) == '+' || (c) == '-')
+#define IS_INT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '-' || (c) == '+' || IS_MULTIPLIER_CHAR((c)))
+#define IS_FLOAT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (c) == '+' || (c) == '-' || IS_MULTIPLIER_CHAR((c)))
 
 #define CHAR_TO_LOWER(ucase) ((ucase) + 32)
 #define CHAR_TO_UPPER(lcase) ((lcase) - 32)
@@ -353,7 +354,7 @@ static void pars_cmd_colon(void)
 		if (pars_match_cmd(true)) {
 			// ok
 		} else {
-			printf("ERROR no such command (colon).\n");//TODO error
+			printf("ERROR no such command: %s\n", pst.charbuf);//TODO error
 			pst.state = PARS_DISCARD_LINE;
 		}
 	}
@@ -466,31 +467,35 @@ static bool char_equals_ci(char a, char b)
 static bool level_str_matches(const char *test, const char *pattern)
 {
 	const uint8_t testlen = strlen(test);
-	uint8_t pi, ti;
-	for (pi = 0, ti = 0; pi < strlen(pattern); pi++) {
-		if (ti > testlen) return false; // not match
+	uint8_t pat_i, tst_i;
+	bool long_started = false;
+	for (pat_i = 0, tst_i = 0; pat_i < strlen(pattern); pat_i++) {
+		if (tst_i > testlen) return false; // not match
 
-		const char pc = pattern[pi];
-		const char tc = test[ti]; // may be at the \0 terminator
+		const char pat_c = pattern[pat_i];
+		const char tst_c = test[tst_i]; // may be at the \0 terminator
 
-		if (IS_LCASE_CHAR(pc)) {
+		if (IS_LCASE_CHAR(pat_c)) {
 			// optional char
-			if (char_equals_ci(pc, tc)) {
-				ti++; // advance test string
+			if (char_equals_ci(pat_c, tst_c)) {
+				tst_i++; // advance test string
+				long_started = true;
+			} else {
+				if (long_started) return false; // once long variant started, it must be completed.
 			}
 
 			continue; // next pi - tc stays in place
 		} else {
 			// require exact match (case insensitive)
-			if (char_equals_ci(pc, tc)) {
-				ti++;
+			if (char_equals_ci(pat_c, tst_c)) {
+				tst_i++;
 			} else {
 				return false;
 			}
 		}
 	}
 
-	return (ti >= testlen);
+	return (tst_i >= testlen);
 }
 
 
@@ -740,7 +745,7 @@ static void pars_blob_preamble_char(uint8_t c)
 			return;
 		}
 
-		if (!IS_INT_CHAR(c)) {
+		if (!IS_NUMBER_CHAR(c)) {
 			printf("ERROR expected ASCII 0-9 after #n\n");//TODO error
 			pst.state = PARS_DISCARD_LINE;
 			return;
