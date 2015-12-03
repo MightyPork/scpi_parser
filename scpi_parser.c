@@ -7,18 +7,16 @@
 #include <stdlib.h>
 
 typedef enum {
-	PARS_COMMAND,
+	PARS_COMMAND = 0,
 	// collect generic arg, terminated with comma or newline. Leading and trailing whitespace ignored.
-	PARS_ARG,
-	PARS_ARG_STR_APOS, // collect arg - string with single quotes
-	PARS_ARG_STR_QUOT, // collect arg - string with double quotes
-	PARS_ARG_BLOB_PREAMBLE,
+	PARS_ARG, // generic argument (bool, float...)
+	PARS_ARG_STRING, // collect arg - string (special treatment for quotes)
+	PARS_ARG_BLOB_PREAMBLE, // #nDDD
+	PARS_ARG_BLOB_DISCARD, // discard blob - same as BLOB_BODY, but no callback or buffering
 	PARS_ARG_BLOB_BODY, // blob body, callback for each group
-	// command with no args terminated by whitespace, discard whitespace until newline and then run callback.
-	// error on non-whitespace
-	PARS_TRAILING_WHITE,
-	PARS_TRAILING_WHITE_NOCB, // no callback.
-	PARS_DISCARD_LINE, // used after detecting error
+	PARS_TRAILING_WHITE, // command ready to run, waiting for end, only whitespace allowed
+	PARS_TRAILING_WHITE_NOCB, // discard whitespace until end of line, don't run callback on success
+	PARS_DISCARD_LINE, // used after detecting error - drop all chars until \n
 } parser_state_t;
 
 #define MAX_CHARBUF_LEN 256
@@ -37,6 +35,9 @@ static struct {
 	int32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
 	int32_t blob_len; // total blob length to read
 
+	char string_quote; // symbol used to quote string
+	bool string_escape; // last char was backslash, next quote is literal
+
 	// recognized complete command level strings (FUNCtion) - exact copy from command struct
 	char cur_levels[MAX_LEVEL_COUNT][MAX_CMD_LEN];
 	uint8_t cur_level_i; // next free level slot index
@@ -47,18 +48,8 @@ static struct {
 
 	SCPI_argval_t args[MAX_PARAM_COUNT];
 	uint8_t arg_i; // next free argument slot index
-} pst = {
-	// defaults
-	.err_queue_i = 0,
-	.state = PARS_COMMAND,
-	.charbuf_i = 0,
-	.cur_level_i = 0,
-	.cmdbuf_kept = false,
-	.matched_cmd = NULL,
-	.blob_cnt = 0,
-	.blob_len = 0,
-	.arg_i = 0
-};
+
+} pst; // initialized by all zeros
 
 
 static void pars_cmd_colon(void); // colon starting a command sub-segment
@@ -107,8 +98,7 @@ static void pars_reset_cmd(void)
 	pst.cmdbuf_kept = false;
 	pst.matched_cmd = NULL;
 	pst.arg_i = 0;
-	pst.blob_cnt = 0;
-	pst.blob_len = 0;
+	pst.string_escape = false;
 }
 
 
@@ -117,18 +107,16 @@ static void pars_reset_cmd_keeplevel(void)
 {
 	pst.state = PARS_COMMAND;
 	pst.charbuf_i = 0;
-	// rewind to last colon
 
+	// rewind to last colon
 	if (pst.cur_level_i > 0) {
 		pst.cur_level_i--; // keep prev levels
 	}
 
 	pst.cmdbuf_kept = true;
-
 	pst.matched_cmd = NULL;
 	pst.arg_i = 0;
-	pst.blob_cnt = 0;
-	pst.blob_len = 0;
+	pst.string_escape = false;
 }
 
 
@@ -182,6 +170,12 @@ static void pars_run_callback(void)
 	if (pst.matched_cmd != NULL) {
 		pst.matched_cmd->callback(pst.args); // run
 	}
+}
+
+
+void scpi_discard_blob(void)
+{
+	pst.state = PARS_ARG_BLOB_DISCARD;
 }
 
 
@@ -277,29 +271,26 @@ void scpi_handle_byte(const uint8_t b)
 			}
 			break;
 
-		// TODO escape sequence in string
+		case PARS_ARG_STRING:
+			// string
 
-		case PARS_ARG_STR_APOS:
-			if (c == '\'') {
+			if (c == pst.string_quote && !pst.string_escape) {
 				// end of string
 				pst.state = PARS_ARG; // next will be newline or comma (or ignored spaces)
 			} else if (c == '\n') {
 				printf("ERROR string literal not terminated.\n");//TODO error
 				pst.state = PARS_DISCARD_LINE;
 			} else {
-				charbuf_append(c);
-			}
-			break;
-
-		case PARS_ARG_STR_QUOT:
-			if (c == '"') {
-				// end of string
-				pst.state = PARS_ARG; // next will be newline or comma (or ignored spaces)
-			} else if (c == '\n') {
-				printf("ERROR string literal not terminated.\n");//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			} else {
-				charbuf_append(c);
+				if (pst.string_escape) {
+					charbuf_append(c);
+					pst.string_escape = false;
+				} else {
+					if (c == '\\') {
+						pst.string_escape = true;
+					} else {
+						charbuf_append(c);
+					}
+				}
 			}
 			break;
 
@@ -309,6 +300,8 @@ void scpi_handle_byte(const uint8_t b)
 			break;
 
 		case PARS_ARG_BLOB_BODY:
+			// binary blob body with callback on buffer full
+
 			charbuf_append(c);
 			pst.blob_cnt++;
 
@@ -322,6 +315,17 @@ void scpi_handle_byte(const uint8_t b)
 
 			if (pst.blob_cnt == pst.blob_len) {
 				pst.state = PARS_TRAILING_WHITE_NOCB; // discard trailing whitespace until newline
+			}
+
+			break;
+
+		case PARS_ARG_BLOB_DISCARD:
+			// binary blob, discard incoming data
+
+			pst.blob_cnt++;
+
+			if (pst.blob_cnt == pst.blob_len) {
+				pst.state = PARS_DISCARD_LINE;
 			}
 
 			break;
@@ -557,27 +561,6 @@ static bool try_match_cmd(const SCPI_command_t *cmd, bool partial)
 static void pars_arg_char(char c)
 {
 	switch (pst.matched_cmd->params[pst.arg_i]) {
-		case SCPI_DT_STRING:
-			if (c == '\'') {
-				pst.state = PARS_ARG_STR_APOS;
-			} else if (c == '"') {
-				pst.state = PARS_ARG_STR_QUOT;
-			} else {
-				printf("ERROR unexpected char '%c', should be ' or \"\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
-		case SCPI_DT_BLOB:
-			if (c == '#') {
-				pst.state = PARS_ARG_BLOB_PREAMBLE;
-				pst.blob_cnt = 0;
-			} else {
-				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
-				pst.state = PARS_DISCARD_LINE;
-			}
-			break;
-
 		case SCPI_DT_FLOAT:
 			if (!IS_FLOAT_CHAR(c)) {
 				printf("ERROR unexpected char '%c' in float.\n", c);//TODO error
@@ -593,6 +576,27 @@ static void pars_arg_char(char c)
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
+			}
+			break;
+
+		case SCPI_DT_STRING:
+			if (c == '\'' || c == '"') {
+				pst.state = PARS_ARG_STRING;
+				pst.string_quote = c;
+				pst.string_escape = false;
+			} else {
+				printf("ERROR invalid string quote, or chars after string.\n");//TODO error
+				pst.state = PARS_DISCARD_LINE;
+			}
+			break;
+
+		case SCPI_DT_BLOB:
+			if (c == '#') {
+				pst.state = PARS_ARG_BLOB_PREAMBLE;
+				pst.blob_cnt = 0;
+			} else {
+				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
+				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
 

@@ -57,5 +57,12 @@ typedef struct {
 // Zero terminated command struct array
 extern const SCPI_command_t scpi_cmd_lang[];
 
+
 // --------------- functions --------------------
+
+/**
+ * SCPI parser entry point.
+ * All incoming bytes should be sent to this function.
+ */
 void scpi_handle_byte(const uint8_t b);
+
