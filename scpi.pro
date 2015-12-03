@@ -5,7 +5,8 @@ CONFIG -= qt
 
 SOURCES += \
     scpi_parser.c \
-    main.c
+    main.c \
+    scpi_errors.c
 
 DISTFILES += \
     style.astylerc \
@@ -15,4 +16,5 @@ DISTFILES += \
     Makefile
 
 HEADERS += \
-    scpi_parser.h
+    scpi_parser.h \
+    scpi_errors.h

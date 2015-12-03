@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "scpi_parser.h"
+#include "scpi_errors.h"
 
 
 
@@ -124,4 +125,9 @@ int main()
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
 	}
+
+	char buf[250];
+	scpi_error_string(buf, E_EXE_DATA_QUESTIONABLE, "The data smells fishy");
+
+	printf("%s\n", buf);
 }
