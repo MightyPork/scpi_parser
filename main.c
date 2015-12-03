@@ -9,6 +9,7 @@ void cmd_APPL_TRI_cb(const SCPI_argval_t *args);
 void cmd_FREQ_cb(const SCPI_argval_t *args);
 void cmd_DISP_TEXT_cb(const SCPI_argval_t *args);
 void cmd_DATA_BLOB_cb(const SCPI_argval_t *args);
+void cmd_DATA_BLOB_data(const uint8_t *bytes);
 
 const SCPI_command_t scpi_cmd_lang[] = {
 	{
@@ -38,8 +39,10 @@ const SCPI_command_t scpi_cmd_lang[] = {
 	},
 	{
 		.levels = {"DATA", "BLOB"},
-		.params = {SCPI_DT_BLOB},
-		.callback = cmd_DATA_BLOB_cb
+		.params = {SCPI_DT_FLOAT, SCPI_DT_BLOB},
+		.callback = cmd_DATA_BLOB_cb,
+		.blob_chunk = 4,
+		.blob_callback = cmd_DATA_BLOB_data
 	},
 	{0} // end marker
 };
@@ -73,9 +76,16 @@ void cmd_DISP_TEXT_cb(const SCPI_argval_t *args)
 	printf("cb  DISPlay:TEXT %s, %d\n", args[0].STRING, args[1].BOOL);
 }
 
+
 void cmd_DATA_BLOB_cb(const SCPI_argval_t *args)
 {
-	// noop
+	printf("cb  DATA:BLOB %f, <%d>\n", args[0].FLOAT, args[1].BLOB_LEN);
+}
+
+
+void cmd_DATA_BLOB_data(const uint8_t *bytes)
+{
+	printf("blob item: %s\n", bytes);
 }
 
 
@@ -85,7 +95,7 @@ int main()
 //	const char *inp = "FREQ 50\n";
 	//const char *inp = "DISPlay:TEXT 'banana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
-	const char *inp = "DATA:BLOB #49080\n";
+	const char *inp = "DATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);

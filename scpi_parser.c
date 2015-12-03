@@ -13,9 +13,11 @@ typedef enum {
 	PARS_ARG_STR_APOS, // collect arg - string with single quotes
 	PARS_ARG_STR_QUOT, // collect arg - string with double quotes
 	PARS_ARG_BLOB_PREAMBLE,
+	PARS_ARG_BLOB_BODY, // blob body, callback for each group
 	// command with no args terminated by whitespace, discard whitespace until newline and then run callback.
 	// error on non-whitespace
 	PARS_TRAILING_WHITE,
+	PARS_TRAILING_WHITE_NOCB, // no callback.
 	PARS_DISCARD_LINE, // used after detecting error
 } parser_state_t;
 
@@ -32,7 +34,8 @@ static struct {
 	char charbuf[MAX_CHARBUF_LEN];
 	uint16_t charbuf_i;
 
-	int8_t blob_preamble_cnt; // preamble counter, if 0, was just #, must read count
+	int32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
+	int32_t blob_len; // total blob length to read
 
 	// recognized complete command level strings (FUNCtion) - exact copy from command struct
 	char cur_levels[MAX_LEVEL_COUNT][MAX_CMD_LEN];
@@ -52,6 +55,8 @@ static struct {
 	.cur_level_i = 0,
 	.cmdbuf_kept = false,
 	.matched_cmd = NULL,
+	.blob_cnt = 0,
+	.blob_len = 0,
 	.arg_i = 0
 };
 
@@ -102,6 +107,8 @@ static void pars_reset_cmd(void)
 	pst.cmdbuf_kept = false;
 	pst.matched_cmd = NULL;
 	pst.arg_i = 0;
+	pst.blob_cnt = 0;
+	pst.blob_len = 0;
 }
 
 
@@ -120,6 +127,8 @@ static void pars_reset_cmd_keeplevel(void)
 
 	pst.matched_cmd = NULL;
 	pst.arg_i = 0;
+	pst.blob_cnt = 0;
+	pst.blob_len = 0;
 }
 
 
@@ -231,10 +240,14 @@ void scpi_handle_byte(const uint8_t b)
 			break;
 
 		case PARS_TRAILING_WHITE:
+		case PARS_TRAILING_WHITE_NOCB:
 			if (IS_WHITESPACE(c)) break;
 
 			if (c == '\n') {
-				pars_run_callback();
+				if(pst.state != PARS_TRAILING_WHITE_NOCB) {
+					pars_run_callback();
+				}
+
 				pars_reset_cmd();
 			} else {
 				printf("ERROR unexpected char '%c' in trailing whitespace.\n", c);//TODO error
@@ -264,7 +277,7 @@ void scpi_handle_byte(const uint8_t b)
 			}
 			break;
 
-			// TODO escape sequence in string
+		// TODO escape sequence in string
 
 		case PARS_ARG_STR_APOS:
 			if (c == '\'') {
@@ -293,6 +306,25 @@ void scpi_handle_byte(const uint8_t b)
 		case PARS_ARG_BLOB_PREAMBLE:
 			// #<digits><dddddd><BLOB>
 			pars_blob_preamble_char(c);
+			break;
+
+		case PARS_ARG_BLOB_BODY:
+			charbuf_append(c);
+			pst.blob_cnt++;
+
+			if (pst.charbuf_i >= pst.matched_cmd->blob_chunk) {
+				charbuf_terminate();
+
+				if (pst.matched_cmd->blob_callback != NULL) {
+					pst.matched_cmd->blob_callback((uint8_t *)pst.charbuf);
+				}
+			}
+
+			if (pst.blob_cnt == pst.blob_len) {
+				pst.state = PARS_TRAILING_WHITE_NOCB; // discard trailing whitespace until newline
+			}
+
+			break;
 	}
 }
 
@@ -539,7 +571,7 @@ static void pars_arg_char(char c)
 		case SCPI_DT_BLOB:
 			if (c == '#') {
 				pst.state = PARS_ARG_BLOB_PREAMBLE;
-				pst.blob_preamble_cnt = 0;
+				pst.blob_cnt = 0;
 			} else {
 				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
 				pst.state = PARS_DISCARD_LINE;
@@ -689,14 +721,14 @@ static void arg_convert_value(void)
 
 static void pars_blob_preamble_char(uint8_t c)
 {
-	if (pst.blob_preamble_cnt == 0) {
+	if (pst.blob_cnt == 0) {
 		if (!INRANGE(c, '1', '9')) {
 			printf("ERROR expected ASCII 1-9 after #\n");//TODO error
 			pst.state = PARS_DISCARD_LINE;
 			return;
 		}
 
-		pst.blob_preamble_cnt = c - '0'; // 1-9
+		pst.blob_cnt = c - '0'; // 1-9
 	} else {
 		if (c == '\n') {
 			printf("ERROR unexpected newline in blob preamble\n");//TODO error
@@ -711,17 +743,18 @@ static void pars_blob_preamble_char(uint8_t c)
 		}
 
 		charbuf_append(c);
-		if (--pst.blob_preamble_cnt == 0) {
+		if (--pst.blob_cnt == 0) {
 			// end of preamble sequence
 			charbuf_terminate();
 
-			int bytecnt;
-			sscanf(pst.charbuf, "%d", &bytecnt);
+			sscanf(pst.charbuf, "%d", &pst.blob_len);
 
-			printf("BLOB byte count = %d\n", bytecnt); // TODO
+			pst.args[pst.arg_i].BLOB_LEN = pst.blob_len;
+			pars_run_callback();
 
 			// Call handler, enter special blob mode
-			pst.state = PARS_DISCARD_LINE;//FIXME
+			pst.state = PARS_ARG_BLOB_BODY;
+			pst.blob_cnt = 0;
 		}
 	}
 }

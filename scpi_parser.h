@@ -27,20 +27,31 @@ typedef union {
 	int32_t INT;
 	bool BOOL;
 	char STRING[MAX_STRING_LEN+1]; // terminator
-	uint32_t BLOB;
+	uint32_t BLOB_LEN;
 } SCPI_argval_t;
 
 
-/** SCPI command preset */
+/**
+ * SCPI command preset
+ * NOTE: command array is terminated by {0} - zero in levels[0][0]
+ */
 typedef struct {
-	// NOTE: command array is terminated by {0} - zero in levels[0][0]
-
+	// levels MUST BE FIRST!
 	const char levels[MAX_LEVEL_COUNT][MAX_CMD_LEN]; // up to 4 parts
-	const SCPI_datatype_t params[MAX_PARAM_COUNT]; // parameter types (0 for unused)
 
 	// called when the command is completed. BLOB arg must be last in the argument list,
 	// and only the first part is collected.
-	void (*callback)(const SCPI_argval_t * args);
+	void (*callback)(const SCPI_argval_t *args);
+
+	// Param types - optional (defaults to zeros)
+	const SCPI_datatype_t params[MAX_PARAM_COUNT]; // parameter types (0 for unused)
+
+	// --- OPTIONAL (only for blob) ---
+
+	// Number of bytes in a blob callback
+	const uint8_t blob_chunk;
+	// Blob chunk callback (every blob_chunk bytes)
+	void (*blob_callback)(const uint8_t *bytes);
 } SCPI_command_t;
 
 // Zero terminated command struct array
