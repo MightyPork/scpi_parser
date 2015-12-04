@@ -127,7 +127,7 @@ static void builtin_cb_FOO(const SCPI_argval_t *args)
 }
 
 
-const SCPI_command_t scpi_commands_builtin[] = {
+static const SCPI_command_t scpi_commands_builtin[] = {
 	{
 		.levels = {"FOO"},
 		.params = {},
@@ -656,13 +656,13 @@ static bool match_cmd(bool partial)
 	strcpy(dest, pst.charbuf);
 
 
-	// First try builtin commands
-	if (match_any_cmd_from_array(scpi_commands_builtin, partial)) {
+	// User commands are checked first, can override builtin commands
+	if (match_any_cmd_from_array(scpi_commands, partial)) {
 		return true;
 	}
 
-	// User commands
-	return match_any_cmd_from_array(scpi_commands, partial);
+	// Try the built-in commands
+	return match_any_cmd_from_array(scpi_commands_builtin, partial);
 }
 
 
