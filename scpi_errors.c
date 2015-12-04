@@ -168,7 +168,7 @@ void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
 
 	if (extra != NULL) {
 		// extra info
-		offs = sprintf(buffer, ";"); // ;
+		offs = sprintf(buffer, "; "); // ;
 		len += offs;
 		buffer += offs;
 

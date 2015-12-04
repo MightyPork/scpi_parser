@@ -81,6 +81,9 @@ static struct {
 } pst = {0}; // initialized by all zeros
 
 
+// buffer for error messages
+static char ebuf[256];
+
 
 // ---------------- PRIVATE PROTOTYPES ------------------
 
@@ -184,13 +187,33 @@ uint8_t scpi_error_count(void)
 	return pst.err_queue_used;
 }
 
+static void err_no_such_command()
+{
+	char *b = ebuf;
+	for (int i = 0; i < pst.cur_level_i; i++) {
+		if (i > 0) b += sprintf(b, ":");
+		b += sprintf(b, "%s", pst.cur_levels[i]);
+	}
+
+	scpi_add_error(E_CMD_UNDEFINED_HEADER, ebuf);
+}
+
+
+static void err_no_such_command_partial()
+{
+	char *b = ebuf;
+	for (int i = 0; i < pst.cur_level_i; i++) {
+		b += sprintf(b, "%s:", pst.cur_levels[i]);
+	}
+
+	scpi_add_error(E_CMD_UNDEFINED_HEADER, ebuf);
+}
 
 
 // ----------------- INPUT PARSING ----------------
 
 void scpi_handle_byte(const uint8_t b)
 {
-	// TODO handle blob here
 	const char c = (char) b;
 
 	switch (pst.state) {
@@ -203,7 +226,7 @@ void scpi_handle_byte(const uint8_t b)
 				if (pst.charbuf_i < SCPI_MAX_CMD_LEN) {
 					charbuf_append(c);
 				} else {
-					printf("ERROR command part too long.\n");//TODO error
+					scpi_add_error(E_CMD_PROGRAM_MNEMONIC_TOO_LONG, NULL);
 					pst.state = PARS_DISCARD_LINE;
 				}
 
@@ -229,7 +252,8 @@ void scpi_handle_byte(const uint8_t b)
 						break;
 
 					default:
-						printf("ERROR unexpected char '%c' in command.\n", c);//TODO error
+						sprintf(ebuf, "Unexpected '%c' in command.", c);
+						scpi_add_error(E_CMD_INVALID_CHARACTER, ebuf);
 						pst.state = PARS_DISCARD_LINE;
 				}
 			}
@@ -253,7 +277,8 @@ void scpi_handle_byte(const uint8_t b)
 
 				pars_reset_cmd();
 			} else {
-				printf("ERROR unexpected char '%c' in trailing whitespace.\n", c);//TODO error
+				sprintf(ebuf, "Unexpected '%c' in trailing whitespace.", c);
+				scpi_add_error(E_CMD_INVALID_CHARACTER, ebuf);
 				pst.state = PARS_DISCARD_LINE;
 			}
 
@@ -287,7 +312,8 @@ void scpi_handle_byte(const uint8_t b)
 				// end of string
 				pst.state = PARS_ARG; // next will be newline or comma (or ignored spaces)
 			} else if (c == '\n') {
-				printf("ERROR string literal not terminated.\n");//TODO error
+				scpi_add_error(E_CMD_STRING_DATA_ERROR, "String not terminated (unexpected newline).");
+
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				if (pst.string_escape) {
@@ -422,7 +448,7 @@ static uint8_t cmd_level_count(const SCPI_command_t *cmd)
 static void charbuf_append(char c)
 {
 	if (pst.charbuf_i >= MAX_CHARBUF_LEN) {
-		printf("ERROR string buffer overflow.\n");//TODO error
+		scpi_add_error(E_DEV_INPUT_BUFFER_OVERRUN, NULL);
 		pst.state = PARS_DISCARD_LINE;
 	}
 
@@ -452,7 +478,8 @@ static void pars_cmd_colon(void)
 			pars_reset_cmd();
 		} else {
 			// colon after nothing - error
-			printf("ERROR unexpected colon in command.\n");//TODO error
+			scpi_add_error(E_CMD_SYNTAX_ERROR, "Unexpected colon.");
+
 			pst.state = PARS_DISCARD_LINE;
 		}
 
@@ -461,7 +488,9 @@ static void pars_cmd_colon(void)
 		if (match_cmd(true)) {
 			// ok
 		} else {
-			printf("ERROR no such command: %s\n", pst.charbuf);//TODO error
+			// error
+			err_no_such_command_partial();
+
 			pst.state = PARS_DISCARD_LINE;
 		}
 	}
@@ -473,22 +502,25 @@ static void pars_cmd_semicolon(void)
 {
 	if (pst.cur_level_i == 0 && pst.charbuf_i == 0) {
 		// nothing before semicolon
-		printf("ERROR semicolon not allowed here.\n");//TODO error
+		scpi_add_error(E_CMD_SYNTAX_ERROR, "Semicolon not preceded by command.");
 		pars_reset_cmd();
 		return;
 	}
 
 	if (match_cmd(false)) {
-		if (cmd_param_count(pst.matched_cmd) == 0) {
+		int req_cnt = cmd_param_count(pst.matched_cmd);
+
+		if (req_cnt == 0) {
 			// no param command - OK
 			run_command_callback();
 			pars_reset_cmd_keeplevel(); // keep level - that's what semicolon does
 		} else {
-			printf("ERROR command missing arguments.\n");//TODO error
+			sprintf(ebuf, "Required %d, got 0.", req_cnt);
+			scpi_add_error(E_CMD_MISSING_PARAMETER, ebuf);
 			pars_reset_cmd();
 		}
 	} else {
-		printf("ERROR no such command %s.\n", pst.charbuf);//TODO error
+		err_no_such_command();
 		pst.state = PARS_DISCARD_LINE;
 	}
 }
@@ -505,16 +537,22 @@ static void pars_cmd_newline(void)
 
 	// complete match
 	if (match_cmd(false)) {
-		if (cmd_param_count(pst.matched_cmd) == 0) {
+		int req_cnt = cmd_param_count(pst.matched_cmd);
+
+		if (req_cnt == 0) {
 			// no param command - OK
 			run_command_callback();
 			pars_reset_cmd();
 		} else {
-			printf("ERROR command missing arguments.\n");//TODO error
+			// error
+			sprintf(ebuf, "Required %d, got 0.", req_cnt);
+			scpi_add_error(E_CMD_MISSING_PARAMETER, ebuf);
+
 			pars_reset_cmd();
 		}
+
 	} else {
-		printf("ERROR no such command %s.\n", pst.charbuf);//TODO error
+		err_no_such_command();
 		pst.state = PARS_DISCARD_LINE;
 	}
 }
@@ -536,7 +574,8 @@ static void pars_cmd_space(void)
 			pst.state = PARS_ARG;
 		}
 	} else {
-		printf("ERROR no such command: %s.\n", pst.charbuf);//TODO error
+		// error
+		err_no_such_command();
 		pst.state = PARS_DISCARD_LINE;
 	}
 }
@@ -701,7 +740,9 @@ static void pars_arg_char(char c)
 	switch (pst.matched_cmd->params[pst.arg_i]) {
 		case SCPI_DT_FLOAT:
 			if (!IS_FLOAT_CHAR(c)) {
-				printf("ERROR unexpected char '%c' in float.\n", c);//TODO error
+				sprintf(ebuf, "'%c' not allowed in FLOAT.", c);
+				scpi_add_error(E_CMD_INVALID_CHARACTER_IN_NUMBER, ebuf);
+
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
@@ -710,7 +751,9 @@ static void pars_arg_char(char c)
 
 		case SCPI_DT_INT:
 			if (!IS_INT_CHAR(c)) {
-				printf("ERROR unexpected char '%c' in int.\n", c);//TODO error
+				sprintf(ebuf, "'%c' not allowed in INT.", c);
+				scpi_add_error(E_CMD_INVALID_CHARACTER_IN_NUMBER, ebuf);
+
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				charbuf_append(c);
@@ -723,7 +766,7 @@ static void pars_arg_char(char c)
 				pst.string_quote = c;
 				pst.string_escape = false;
 			} else {
-				printf("ERROR invalid string quote, or chars after string.\n");//TODO error
+				scpi_add_error(E_CMD_INVALID_STRING_DATA, "Invalid quote, or chars after string.");
 				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
@@ -733,7 +776,7 @@ static void pars_arg_char(char c)
 				pst.state = PARS_ARG_BLOB_PREAMBLE;
 				pst.blob_cnt = 0;
 			} else {
-				printf("ERROR unexpected char '%c', binary block should start with #\n", c);//TODO error
+				scpi_add_error(E_CMD_INVALID_BLOCK_DATA, "Block data must start with #");
 				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
@@ -750,14 +793,13 @@ static void pars_arg_comma(void)
 {
 	if (pst.arg_i == cmd_param_count(pst.matched_cmd) - 1) {
 		// it was the last argument
-		// comma illegal
-		printf("ERROR unexpected comma after the last argument\n");//TODO error
+		scpi_add_error(E_CMD_UNEXPECTED_NUMBER_OF_PARAMETERS, "Comma after last argument.");
 		pst.state = PARS_DISCARD_LINE;
 		return;
 	}
 
 	if (pst.charbuf_i == 0) {
-		printf("ERROR empty argument is not allowed.\n");//TODO error
+		scpi_add_error(E_CMD_SYNTAX_ERROR, "Missing command before comma.");
 		pst.state = PARS_DISCARD_LINE;
 		return;
 	}
@@ -768,11 +810,19 @@ static void pars_arg_comma(void)
 }
 
 
-static void pars_arg_newline(void)
+// line ended with \n or ;
+static void pars_arg_eol_do(bool keep_levels)
 {
-	if (pst.arg_i < cmd_param_count(pst.matched_cmd) - 1) {
+	int req_cnt = cmd_param_count(pst.matched_cmd);
+
+	if (pst.arg_i < req_cnt - 1) {
 		// not the last arg yet - fail
-		printf("ERROR not enough arguments!\n");//TODO error
+
+		if (pst.charbuf_i > 0) pst.arg_i++; // acknowledge the last arg
+
+		sprintf(ebuf, "Required %d, got %d.", req_cnt, pst.arg_i);
+		scpi_add_error(E_CMD_MISSING_PARAMETER, ebuf);
+
 		pst.state = PARS_DISCARD_LINE;
 		return;
 	}
@@ -780,23 +830,23 @@ static void pars_arg_newline(void)
 	arg_convert_value();
 	run_command_callback();
 
-	pars_reset_cmd(); // start a new command
+	if (keep_levels) {
+		pars_reset_cmd_keeplevel();
+	} else {
+		pars_reset_cmd(); // start a new command
+	}
+}
+
+
+static void pars_arg_newline(void)
+{
+	pars_arg_eol_do(false);
 }
 
 
 static void pars_arg_semicolon(void)
 {
-	if (pst.arg_i < cmd_param_count(pst.matched_cmd) - 1) {
-		// not the last arg yet - fail
-		printf("ERROR not enough arguments!\n");//TODO error
-		pst.state = PARS_DISCARD_LINE;
-		return;
-	}
-
-	arg_convert_value();
-	run_command_callback();
-
-	pars_reset_cmd_keeplevel(); // start a new command, keep level
+	pars_arg_eol_do(true);
 }
 
 
@@ -819,15 +869,19 @@ static void arg_convert_value(void)
 			} else if (strcasecmp(pst.charbuf, "OFF") == 0) {
 				dest->BOOL = 0;
 			} else {
-				printf("ERROR argument mismatch for type BOOL\n");//TODO error
+				sprintf(ebuf, "Invalid BOOL value: '%s'", pst.charbuf);
+				scpi_add_error(E_CMD_NUMERIC_DATA_ERROR, ebuf);
+
 				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
 
 		case SCPI_DT_FLOAT:
 			j = sscanf(pst.charbuf, "%f", &dest->FLOAT);
-			if (j == 0) {
-				printf("ERROR failed to convert %s to FLOAT\n", pst.charbuf);//TODO error
+			if (j == 0 || pst.charbuf[0] == '\0') { //fail or empty buffer
+				sprintf(ebuf, "Invalid FLOAT value: '%s'", pst.charbuf);
+				scpi_add_error(E_CMD_NUMERIC_DATA_ERROR, ebuf);
+
 				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
@@ -835,15 +889,18 @@ static void arg_convert_value(void)
 		case SCPI_DT_INT:
 			j = sscanf(pst.charbuf, "%d", &dest->INT);
 
-			if (j == 0) {
-				printf("ERROR failed to convert %s to INT\n", pst.charbuf);//TODO error
+			if (j == 0 || pst.charbuf[0] == '\0') { //fail or empty buffer
+				sprintf(ebuf, "Invalid INT value: '%s'", pst.charbuf);
+				scpi_add_error(E_CMD_NUMERIC_DATA_ERROR, ebuf);
+
 				pst.state = PARS_DISCARD_LINE;
 			}
 			break;
 
 		case SCPI_DT_STRING:
 			if (strlen(pst.charbuf) > SCPI_MAX_STRING_LEN) {
-				printf("ERROR string too long.\n");//TODO error
+				scpi_add_error(E_CMD_INVALID_STRING_DATA, "String too long.");
+
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				strcpy(dest->STRING, pst.charbuf); // copy the string
@@ -853,7 +910,7 @@ static void arg_convert_value(void)
 
 		default:
 			// impossible
-			printf("ERROR unexpected data type\n");//TODO error
+			scpi_add_error(E_DEV_SYSTEM_ERROR, "Unexpected argument data type.");
 			pst.state = PARS_DISCARD_LINE;
 	}
 
@@ -866,21 +923,26 @@ static void pars_blob_preamble_char(uint8_t c)
 {
 	if (pst.blob_cnt == 0) {
 		if (!INRANGE(c, '1', '9')) {
-			printf("ERROR expected ASCII 1-9 after #\n");//TODO error
-			pst.state = PARS_DISCARD_LINE;// not enough to remove the blob containing \n
+			sprintf(ebuf, "Unexpected '%c' in binary data preamble.", c);
+			scpi_add_error(E_CMD_BLOCK_DATA_ERROR, ebuf);
+
+			pst.state = PARS_DISCARD_LINE;// (but not enough to remove the blob containing \n)
 			return;
 		}
 
 		pst.blob_cnt = c - '0'; // 1-9
 	} else {
 		if (c == '\n') {
-			printf("ERROR unexpected newline in blob preamble\n");//TODO error
+			scpi_add_error(E_CMD_BLOCK_DATA_ERROR, "Unexpected newline in binary data preamble.");
+
 			pars_reset_cmd();
 			return;
 		}
 
 		if (!IS_NUMBER_CHAR(c)) {
-			printf("ERROR expected ASCII 0-9 after #n\n");//TODO error
+			sprintf(ebuf, "Unexpected '%c' in binary data preamble.", c);
+			scpi_add_error(E_CMD_BLOCK_DATA_ERROR, ebuf);
+
 			pst.state = PARS_DISCARD_LINE;
 			return;
 		}

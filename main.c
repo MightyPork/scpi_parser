@@ -73,7 +73,7 @@ const SCPI_command_t scpi_commands[] = {
 	},
 	{
 		.levels = {"APPLy", "TRIangle"},
-		.params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
+		.params = {SCPI_DT_BOOL, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_TRI_cb
 	},
 	{
@@ -118,10 +118,12 @@ int main()
 
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-//	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
-	const char *inp = "FOO\nDATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
+	//const char *inp = "FOO\nDATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\nAPPLY:MOO\n";
 	//const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";
+
+	//const char *inp = "*idn?;foo;apply:sin 5,6,\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
@@ -130,7 +132,7 @@ int main()
 
 	scpi_error_string(buf, E_EXE_DATA_QUESTIONABLE, "The data smells fishy");
 
-//	scpi_read_error(buf), printf("%s\n", buf);
+	scpi_read_error(buf), printf("%s\n", buf);
 
 //	scpi_add_error(E_CMD_BLOCK_DATA_ERROR, NULL);
 
