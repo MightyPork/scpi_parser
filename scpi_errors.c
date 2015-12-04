@@ -12,6 +12,7 @@ typedef struct {
 } SCPI_error_desc;
 
 static const SCPI_error_desc error_table[] = {
+	{ 0, "No error"},
 	{ -100, "Command error"},
 	{ -101, "Invalid character"},
 	{ -102, "Syntax error"},
@@ -133,13 +134,13 @@ static const SCPI_error_desc error_table[] = {
 	{ -600, "User request"},
 	{ -700, "Request control"},
 	{ -800, "Operation complete"},
-	{0}
+	{ -9999} // end mark
 };
 
 
 const char * scpi_error_message(SCPI_error_t errno)
 {
-	for (int i = 0; error_table[i].errno != 0; i++) {
+	for (int i = 0; error_table[i].errno != -9999; i++) {
 		if (error_table[i].errno == errno) {
 			return error_table[i].msg;
 		}
@@ -159,9 +160,7 @@ void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
 	len = offs = sprintf(buffer, "%d,\"", errno); // <code>,"
 	buffer += offs;
 
-	if (msg == NULL) {
-		msg = "Unknown error";
-	}
+	if (msg == NULL) msg = "Unknown error";
 
 	offs = sprintf(buffer, "%s", msg); // Error message
 	len += offs;
@@ -169,7 +168,7 @@ void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
 
 	if (extra != NULL) {
 		// extra info
-		offs = sprintf(buffer, "; "); // ;_
+		offs = sprintf(buffer, ";"); // ;
 		len += offs;
 		buffer += offs;
 

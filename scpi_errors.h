@@ -4,6 +4,7 @@
 
 // SCPI error constants
 typedef enum {
+	E_NO_ERROR = 0,
 	E_COMMAND_ERROR = -100,
 	E_CMD_INVALID_CHARACTER = -101,
 	E_CMD_SYNTAX_ERROR = -102,

@@ -1,14 +1,13 @@
 #pragma once
+#include "scpi_errors.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_CMD_LEN 12
-#define MAX_STRING_LEN 12
-#define MAX_LEVEL_COUNT 4
-#define MAX_PARAM_COUNT 4
-
-#define ERR_QUEUE_LEN 4
-#define MAX_ERROR_LEN 100
+#define SCPI_MAX_CMD_LEN 12
+#define SCPI_MAX_STRING_LEN 12
+#define SCPI_MAX_LEVEL_COUNT 4
+#define SCPI_MAX_PARAM_COUNT 4
 
 /** Argument data types */
 typedef enum {
@@ -26,10 +25,12 @@ typedef union {
 	float FLOAT;
 	int32_t INT;
 	bool BOOL;
-	char STRING[MAX_STRING_LEN+1]; // terminator
+	char STRING[SCPI_MAX_STRING_LEN + 1]; // terminator
 	uint32_t BLOB_LEN;
 } SCPI_argval_t;
 
+
+// ------ CONFIGURATION --------
 
 /**
  * SCPI command preset
@@ -37,14 +38,14 @@ typedef union {
  */
 typedef struct {
 	// levels MUST BE FIRST!
-	const char levels[MAX_LEVEL_COUNT][MAX_CMD_LEN]; // up to 4 parts
+	const char levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN]; // up to 4 parts
 
 	// called when the command is completed. BLOB arg must be last in the argument list,
 	// and only the first part is collected.
 	void (*callback)(const SCPI_argval_t *args);
 
 	// Param types - optional (defaults to zeros)
-	const SCPI_datatype_t params[MAX_PARAM_COUNT]; // parameter types (0 for unused)
+	const SCPI_datatype_t params[SCPI_MAX_PARAM_COUNT]; // parameter types (0 for unused)
 
 	// --- OPTIONAL (only for blob) ---
 
@@ -54,8 +55,9 @@ typedef struct {
 	void (*blob_callback)(const uint8_t *bytes);
 } SCPI_command_t;
 
-// Zero terminated command struct array
-extern const SCPI_command_t scpi_cmd_lang[];
+
+// Zero terminated command struct array - must be defined.
+extern const SCPI_command_t scpi_commands[];
 
 
 // --------------- functions --------------------
@@ -66,3 +68,19 @@ extern const SCPI_command_t scpi_cmd_lang[];
  */
 void scpi_handle_byte(const uint8_t b);
 
+/** Add error to the error queue */
+void scpi_add_error(SCPI_error_t errno, const char *extra);
+
+/** Get number of errors in the error queue */
+uint8_t scpi_error_count(void);
+
+/**
+ * Read and remove one entry from the error queue.
+ * Returns 0,"No error" if the queue is empty.
+ *
+ * The entry is copied to the provided buffer, which must be 256 chars long.
+ */
+void scpi_read_error(char *buf);
+
+/** Discard the rest of the currently processed blob */
+void scpi_discard_blob(void);

@@ -1,78 +1,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "scpi_parser.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef enum {
-	PARS_COMMAND = 0,
-	// collect generic arg, terminated with comma or newline. Leading and trailing whitespace ignored.
-	PARS_ARG, // generic argument (bool, float...)
-	PARS_ARG_STRING, // collect arg - string (special treatment for quotes)
-	PARS_ARG_BLOB_PREAMBLE, // #nDDD
-	PARS_ARG_BLOB_DISCARD, // discard blob - same as BLOB_BODY, but no callback or buffering
-	PARS_ARG_BLOB_BODY, // blob body, callback for each group
-	PARS_TRAILING_WHITE, // command ready to run, waiting for end, only whitespace allowed
-	PARS_TRAILING_WHITE_NOCB, // discard whitespace until end of line, don't run callback on success
-	PARS_DISCARD_LINE, // used after detecting error - drop all chars until \n
-} parser_state_t;
+#include "scpi_parser.h"
+#include "scpi_errors.h"
 
-#define MAX_CHARBUF_LEN 256
-
-/** parser internal state struct */
-static struct {
-	char err_queue[ERR_QUEUE_LEN][MAX_ERROR_LEN];
-	uint8_t err_queue_i;
-
-	parser_state_t state; // current parser internal state
-
-	// string buffer, chars collected here until recognized
-	char charbuf[MAX_CHARBUF_LEN];
-	uint16_t charbuf_i;
-
-	int32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
-	int32_t blob_len; // total blob length to read
-
-	char string_quote; // symbol used to quote string
-	bool string_escape; // last char was backslash, next quote is literal
-
-	// recognized complete command level strings (FUNCtion) - exact copy from command struct
-	char cur_levels[MAX_LEVEL_COUNT][MAX_CMD_LEN];
-	uint8_t cur_level_i; // next free level slot index
-
-	bool cmdbuf_kept; // set to 1 after semicolon - cur_levels is kept (removed last part)
-
-	const SCPI_command_t * matched_cmd; // command is put here after recognition, used as reference for args
-
-	SCPI_argval_t args[MAX_PARAM_COUNT];
-	uint8_t arg_i; // next free argument slot index
-
-} pst = {0}; // initialized by all zeros
+// Config
+#define ERR_QUEUE_LEN 4
+#define MAX_ERROR_LEN 255
+#define MAX_CHARBUF_LEN 255
 
 
-static void pars_cmd_colon(void); // colon starting a command sub-segment
-static void pars_cmd_space(void); // space ending a command
-static void pars_cmd_newline(void); // LF
-static void pars_cmd_semicolon(void); // semicolon right after a command
-static bool pars_match_cmd(bool partial);
-static void pars_arg_char(char c);
-static void pars_arg_comma(void);
-static void pars_arg_newline(void);
-static void pars_arg_semicolon(void);
-static void pars_blob_preamble_char(uint8_t c);
-
-static uint8_t cmd_param_count(const SCPI_command_t *cmd);
-static uint8_t cmd_level_count(const SCPI_command_t *cmd);
-
-static bool try_match_cmd(const SCPI_command_t *cmd, bool partial);
-static void charbuf_terminate(void);
-static void charbuf_append(char c);
-static void pars_run_callback(void);
-static void arg_convert_value(void);
-
-// char matching
+// Char matching
 #define INRANGE(c, a, b) ((c) >= (a) && (c) <= (b))
 #define IS_WHITESPACE(c) (INRANGE((c), 0, 9) || INRANGE((c), 11, 32))
 
@@ -90,95 +32,161 @@ static void arg_convert_value(void);
 
 
 
-/** Reset parser state. */
-static void pars_reset_cmd(void)
+/** Parser internal state enum */
+typedef enum {
+	PARS_COMMAND = 0,
+	// collect generic arg, terminated with comma or newline. Leading and trailing whitespace ignored.
+	PARS_ARG, // generic argument (bool, float...)
+	PARS_ARG_STRING, // collect arg - string (special treatment for quotes)
+	PARS_ARG_BLOB_PREAMBLE, // #nDDD
+	PARS_ARG_BLOB_DISCARD, // discard blob - same as BLOB_BODY, but no callback or buffering
+	PARS_ARG_BLOB_BODY, // blob body, callback for each group
+	PARS_TRAILING_WHITE, // command ready to run, waiting for end, only whitespace allowed
+	PARS_TRAILING_WHITE_NOCB, // discard whitespace until end of line, don't run callback on success
+	PARS_DISCARD_LINE, // used after detecting error - drop all chars until \n
+} parser_state_t;
+
+
+
+/** Parser internal state struct */
+static struct {
+	char err_queue[ERR_QUEUE_LEN][MAX_ERROR_LEN + 1];
+	int8_t err_queue_r;
+	int8_t err_queue_w;
+	int8_t err_queue_used; // signed for backtracking
+
+	parser_state_t state; // current parser internal state
+
+	// string buffer, chars collected here until recognized
+	char charbuf[MAX_CHARBUF_LEN + 1];
+	uint16_t charbuf_i;
+
+	int32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
+	int32_t blob_len; // total blob length to read
+
+	char string_quote; // symbol used to quote string
+	bool string_escape; // last char was backslash, next quote is literal
+
+	// recognized complete command level strings (FUNCtion) - exact copy from command struct
+	char cur_levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN];
+	uint8_t cur_level_i; // next free level slot index
+
+	bool cmdbuf_kept; // set to 1 after semicolon - cur_levels is kept (removed last part)
+
+	const SCPI_command_t * matched_cmd; // command is put here after recognition, used as reference for args
+
+	SCPI_argval_t args[SCPI_MAX_PARAM_COUNT];
+	uint8_t arg_i; // next free argument slot index
+
+} pst = {0}; // initialized by all zeros
+
+
+
+// ---------------- PRIVATE PROTOTYPES ------------------
+
+// Command parsing
+static void pars_cmd_colon(void); // colon starting a command sub-segment
+static void pars_cmd_space(void); // space ending a command
+static void pars_cmd_newline(void); // LF
+static void pars_cmd_semicolon(void); // semicolon right after a command
+
+// Command properties (find length of array)
+static uint8_t cmd_param_count(const SCPI_command_t *cmd);
+static uint8_t cmd_level_count(const SCPI_command_t *cmd);
+
+static bool match_cmd(bool partial);
+static bool match_any_cmd_from_array(const SCPI_command_t arr[], bool partial);
+static bool match_cmd_do(const SCPI_command_t *cmd, bool partial);
+static void run_command_callback(void);
+
+// Argument parsing
+static void pars_arg_char(char c);
+static void pars_arg_comma(void);
+static void pars_arg_newline(void);
+static void pars_arg_semicolon(void);
+static void pars_blob_preamble_char(uint8_t c);
+static void arg_convert_value(void);
+
+static void charbuf_terminate(void);
+static void charbuf_append(char c);
+
+// Reset
+static void pars_reset_cmd(void);
+static void pars_reset_cmd_keeplevel(void);
+
+
+
+// ---------------- BUILTIN SCPI COMMANDS ------------------
+
+static void builtin_cb_FOO(const SCPI_argval_t *args)
 {
-	pst.state = PARS_COMMAND;
-	pst.charbuf_i = 0;
-	pst.cur_level_i = 0;
-	pst.cmdbuf_kept = false;
-	pst.matched_cmd = NULL;
-	pst.arg_i = 0;
-	pst.string_escape = false;
+	printf("Builtin FOO\n");
 }
 
 
-/** Reset parser state, keep level (semicolon) */
-static void pars_reset_cmd_keeplevel(void)
+const SCPI_command_t scpi_commands_builtin[] = {
+	{
+		.levels = {"FOO"},
+		.params = {},
+		.callback = builtin_cb_FOO
+	},
+	{0} // end marker
+};
+
+
+
+// ------------------- ERROR QUEUE ---------------------
+
+void scpi_add_error(SCPI_error_t errno, const char *extra)
 {
-	pst.state = PARS_COMMAND;
-	pst.charbuf_i = 0;
+	bool added = true;
+	if (pst.err_queue_used >= ERR_QUEUE_LEN) {
+		errno = E_DEV_QUEUE_OVERFLOW;
+		extra = NULL;
+		added = false; // replaced only
 
-	// rewind to last colon
-	if (pst.cur_level_i > 0) {
-		pst.cur_level_i--; // keep prev levels
-	}
-
-	pst.cmdbuf_kept = true;
-	pst.matched_cmd = NULL;
-	pst.arg_i = 0;
-	pst.string_escape = false;
-}
-
-
-static uint8_t cmd_param_count(const SCPI_command_t *cmd)
-{
-	for (uint8_t i = 0; i < MAX_PARAM_COUNT; i++) {
-		if (cmd->params[i] == SCPI_DT_NONE) {
-			return i;
+		// backtrack
+		pst.err_queue_w--;
+		pst.err_queue_used--;
+		if (pst.err_queue_w < 0) {
+			pst.err_queue_w = ERR_QUEUE_LEN - 1;
 		}
 	}
 
-	return MAX_PARAM_COUNT;
-}
+	scpi_error_string(pst.err_queue[pst.err_queue_w], errno, extra);
 
-
-static uint8_t cmd_level_count(const SCPI_command_t *cmd)
-{
-	for (uint8_t i = 0; i < MAX_LEVEL_COUNT; i++) {
-		if (cmd->levels[i][0] == 0) {
-			return i;
-		}
-	}
-
-	return MAX_LEVEL_COUNT;
-}
-
-
-/** Add a byte to charbuf, error on overflow */
-static void charbuf_append(char c)
-{
-	if (pst.charbuf_i >= MAX_CHARBUF_LEN) {
-		printf("ERROR string buffer overflow.\n");//TODO error
-		pst.state = PARS_DISCARD_LINE;
-	}
-
-	pst.charbuf[pst.charbuf_i++] = c;
-}
-
-
-/** Terminate charbuf and rewind the pointer to start */
-static void charbuf_terminate(void)
-{
-	pst.charbuf[pst.charbuf_i] = '\0';
-	pst.charbuf_i = 0;
-}
-
-
-/** Run the matched command's callback with the arguments */
-static void pars_run_callback(void)
-{
-	if (pst.matched_cmd != NULL) {
-		pst.matched_cmd->callback(pst.args); // run
+	pst.err_queue_w++;
+	pst.err_queue_used++;
+	if (pst.err_queue_w >= ERR_QUEUE_LEN) {
+		pst.err_queue_w = 0;
 	}
 }
 
 
-void scpi_discard_blob(void)
+void scpi_read_error(char *buf)
 {
-	pst.state = PARS_ARG_BLOB_DISCARD;
+	if (pst.err_queue_used == 0) {
+		scpi_error_string(buf, E_NO_ERROR, NULL);
+		return;
+	}
+
+	strcpy(buf, pst.err_queue[pst.err_queue_r++]);
+	pst.err_queue_used--;
+
+	if (pst.err_queue_r >= ERR_QUEUE_LEN) {
+		pst.err_queue_r = 0;
+	}
 }
 
+
+uint8_t scpi_error_count(void)
+{
+	return pst.err_queue_used;
+}
+
+
+
+// ----------------- INPUT PARSING ----------------
 
 void scpi_handle_byte(const uint8_t b)
 {
@@ -192,7 +200,7 @@ void scpi_handle_byte(const uint8_t b)
 			if (IS_IDENT_CHAR(c)) {
 				// valid command char
 
-				if (pst.charbuf_i < MAX_CMD_LEN) {
+				if (pst.charbuf_i < SCPI_MAX_CMD_LEN) {
 					charbuf_append(c);
 				} else {
 					printf("ERROR command part too long.\n");//TODO error
@@ -239,8 +247,8 @@ void scpi_handle_byte(const uint8_t b)
 			if (IS_WHITESPACE(c)) break;
 
 			if (c == '\n') {
-				if(pst.state != PARS_TRAILING_WHITE_NOCB) {
-					pars_run_callback();
+				if (pst.state != PARS_TRAILING_WHITE_NOCB) {
+					run_command_callback();
 				}
 
 				pars_reset_cmd();
@@ -334,6 +342,105 @@ void scpi_handle_byte(const uint8_t b)
 }
 
 
+
+// ------------------- RESET INTERNAL STATE ------------------
+
+
+// public //
+/** Discard the rest of the currently processed blob */
+void scpi_discard_blob(void)
+{
+	if (pst.state == PARS_ARG_BLOB_BODY) {
+		pst.state = PARS_ARG_BLOB_DISCARD;
+	}
+}
+
+
+/** Reset parser state. */
+static void pars_reset_cmd(void)
+{
+	pst.state = PARS_COMMAND;
+	pst.charbuf_i = 0;
+	pst.cur_level_i = 0;
+	pst.cmdbuf_kept = false;
+	pst.matched_cmd = NULL;
+	pst.arg_i = 0;
+	pst.string_escape = false;
+}
+
+
+/** Reset parser state, keep level (semicolon) */
+static void pars_reset_cmd_keeplevel(void)
+{
+	pst.state = PARS_COMMAND;
+	pst.charbuf_i = 0;
+
+	// rewind to last colon
+	if (pst.cur_level_i > 0) {
+		pst.cur_level_i--; // keep prev levels
+	}
+
+	pst.cmdbuf_kept = true;
+	pst.matched_cmd = NULL;
+	pst.arg_i = 0;
+	pst.string_escape = false;
+}
+
+
+// ------------------- COMMAND HELPERS -------------------
+
+/** Get param count from command struct */
+static uint8_t cmd_param_count(const SCPI_command_t *cmd)
+{
+	for (uint8_t i = 0; i < SCPI_MAX_PARAM_COUNT; i++) {
+		if (cmd->params[i] == SCPI_DT_NONE) {
+			return i;
+		}
+	}
+
+	return SCPI_MAX_PARAM_COUNT;
+}
+
+
+/** Get level count from command struct */
+static uint8_t cmd_level_count(const SCPI_command_t *cmd)
+{
+	for (uint8_t i = 0; i < SCPI_MAX_LEVEL_COUNT; i++) {
+		if (cmd->levels[i][0] == 0) {
+			return i;
+		}
+	}
+
+	return SCPI_MAX_LEVEL_COUNT;
+}
+
+
+
+// ----------------- CHAR BUFFER HELPERS -------------------
+
+/** Add a byte to charbuf, error on overflow */
+static void charbuf_append(char c)
+{
+	if (pst.charbuf_i >= MAX_CHARBUF_LEN) {
+		printf("ERROR string buffer overflow.\n");//TODO error
+		pst.state = PARS_DISCARD_LINE;
+	}
+
+	pst.charbuf[pst.charbuf_i++] = c;
+}
+
+
+/** Terminate charbuf and rewind the pointer to start */
+static void charbuf_terminate(void)
+{
+	pst.charbuf[pst.charbuf_i] = '\0';
+	pst.charbuf_i = 0;
+}
+
+
+
+// ----------------- PARSING COMMANDS ---------------
+
 /** Colon received when collecting command parts */
 static void pars_cmd_colon(void)
 {
@@ -351,7 +458,7 @@ static void pars_cmd_colon(void)
 
 	} else {
 		// internal colon - partial match
-		if (pars_match_cmd(true)) {
+		if (match_cmd(true)) {
 			// ok
 		} else {
 			printf("ERROR no such command: %s\n", pst.charbuf);//TODO error
@@ -361,6 +468,7 @@ static void pars_cmd_colon(void)
 }
 
 
+/** Semiolon received when collecting command parts */
 static void pars_cmd_semicolon(void)
 {
 	if (pst.cur_level_i == 0 && pst.charbuf_i == 0) {
@@ -370,10 +478,10 @@ static void pars_cmd_semicolon(void)
 		return;
 	}
 
-	if (pars_match_cmd(false)) {
+	if (match_cmd(false)) {
 		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no param command - OK
-			pars_run_callback();
+			run_command_callback();
 			pars_reset_cmd_keeplevel(); // keep level - that's what semicolon does
 		} else {
 			printf("ERROR command missing arguments.\n");//TODO error
@@ -396,10 +504,10 @@ static void pars_cmd_newline(void)
 	}
 
 	// complete match
-	if (pars_match_cmd(false)) {
+	if (match_cmd(false)) {
 		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no param command - OK
-			pars_run_callback();
+			run_command_callback();
 			pars_reset_cmd();
 		} else {
 			printf("ERROR command missing arguments.\n");//TODO error
@@ -420,7 +528,7 @@ static void pars_cmd_space(void)
 		return;
 	}
 
-	if (pars_match_cmd(false)) {
+	if (match_cmd(false)) {
 		if (cmd_param_count(pst.matched_cmd) == 0) {
 			// no commands
 			pst.state = PARS_TRAILING_WHITE;
@@ -500,7 +608,7 @@ static bool level_str_matches(const char *test, const char *pattern)
 
 
 
-static bool pars_match_cmd(bool partial)
+static bool match_cmd(bool partial)
 {
 	charbuf_terminate(); // zero-end and rewind index
 
@@ -508,17 +616,30 @@ static bool pars_match_cmd(bool partial)
 	char *dest = pst.cur_levels[pst.cur_level_i++];
 	strcpy(dest, pst.charbuf);
 
+
+	// First try builtin commands
+	if (match_any_cmd_from_array(scpi_commands_builtin, partial)) {
+		return true;
+	}
+
+	// User commands
+	return match_any_cmd_from_array(scpi_commands, partial);
+}
+
+
+static bool match_any_cmd_from_array(const SCPI_command_t arr[], bool partial)
+{
 	for (uint16_t i = 0; i < 0xFFFF; i++) {
 
-		const SCPI_command_t *cmd = &scpi_cmd_lang[i];
+		const SCPI_command_t *cmd = &arr[i];
 		if (cmd->levels[0][0] == 0) break; // end marker
 
-		if (cmd_level_count(cmd) > MAX_LEVEL_COUNT) {
+		if (cmd_level_count(cmd) > SCPI_MAX_LEVEL_COUNT) {
 			// FAIL, too deep. Bad config
 			continue;
 		}
 
-		if (try_match_cmd(cmd, partial)) {
+		if (match_cmd_do(cmd, partial)) {
 			if (partial) {
 				// match found, OK
 				return true;
@@ -535,7 +656,7 @@ static bool pars_match_cmd(bool partial)
 
 
 /** Try to match current state to a given command */
-static bool try_match_cmd(const SCPI_command_t *cmd, bool partial)
+static bool match_cmd_do(const SCPI_command_t *cmd, bool partial)
 {
 	const uint8_t level_cnt = cmd_level_count(cmd);
 	if (pst.cur_level_i > level_cnt) return false; // command too short
@@ -561,6 +682,18 @@ static bool try_match_cmd(const SCPI_command_t *cmd, bool partial)
 	return true;
 }
 
+
+/** Run the matched command's callback with the arguments */
+static void run_command_callback(void)
+{
+	if (pst.matched_cmd != NULL) {
+		pst.matched_cmd->callback(pst.args); // run
+	}
+}
+
+
+
+// ---------------------- PARSING ARGS --------------------------
 
 /** Non-whitespace and non-comma char received in arg. */
 static void pars_arg_char(char c)
@@ -645,7 +778,7 @@ static void pars_arg_newline(void)
 	}
 
 	arg_convert_value();
-	pars_run_callback();
+	run_command_callback();
 
 	pars_reset_cmd(); // start a new command
 }
@@ -661,7 +794,7 @@ static void pars_arg_semicolon(void)
 	}
 
 	arg_convert_value();
-	pars_run_callback();
+	run_command_callback();
 
 	pars_reset_cmd_keeplevel(); // start a new command, keep level
 }
@@ -709,7 +842,7 @@ static void arg_convert_value(void)
 			break;
 
 		case SCPI_DT_STRING:
-			if (strlen(pst.charbuf) > MAX_STRING_LEN) {
+			if (strlen(pst.charbuf) > SCPI_MAX_STRING_LEN) {
 				printf("ERROR string too long.\n");//TODO error
 				pst.state = PARS_DISCARD_LINE;
 			} else {
@@ -728,12 +861,13 @@ static void arg_convert_value(void)
 	pst.arg_i++;
 }
 
+
 static void pars_blob_preamble_char(uint8_t c)
 {
 	if (pst.blob_cnt == 0) {
 		if (!INRANGE(c, '1', '9')) {
 			printf("ERROR expected ASCII 1-9 after #\n");//TODO error
-			pst.state = PARS_DISCARD_LINE;
+			pst.state = PARS_DISCARD_LINE;// not enough to remove the blob containing \n
 			return;
 		}
 
@@ -759,7 +893,7 @@ static void pars_blob_preamble_char(uint8_t c)
 			sscanf(pst.charbuf, "%d", &pst.blob_len);
 
 			pst.args[pst.arg_i].BLOB_LEN = pst.blob_len;
-			pars_run_callback();
+			run_command_callback();
 
 			// Call handler, enter special blob mode
 			pst.state = PARS_ARG_BLOB_BODY;

@@ -5,7 +5,6 @@
 #include "scpi_errors.h"
 
 
-
 void cmd_aIDNq_cb(const SCPI_argval_t *args)
 {
 	printf("cb  *IDN?\n");
@@ -61,7 +60,7 @@ void cmd_STQE_cb(const SCPI_argval_t *args)
 	printf("STATUS:QUEUE:ENABLE %d\n", args[0].BOOL);
 }
 
-const SCPI_command_t scpi_cmd_lang[] = {
+const SCPI_command_t scpi_commands[] = {
 	{
 		.levels = {"*IDN?"},
 		.params = {},
@@ -114,20 +113,42 @@ const SCPI_command_t scpi_cmd_lang[] = {
 
 int main()
 {
+	char buf[256];
+
 
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+//	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
-//	const char *inp = "DATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
-//	const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";
+	const char *inp = "FOO\nDATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\n";
+	//const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
 	}
 
-	char buf[250];
+
 	scpi_error_string(buf, E_EXE_DATA_QUESTIONABLE, "The data smells fishy");
 
-	printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+
+//	scpi_add_error(E_CMD_BLOCK_DATA_ERROR, NULL);
+
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_add_error(E_CMD_DATA_TYPE_ERROR, "LOL OOPS");
+//	scpi_add_error(E_CMD_CHARACTER_DATA_TOO_LONG, "Too long data very overflow such fail");
+//	scpi_add_error(E_CMD_MACRO_PARAMETER_ERROR, "maaaacrooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo");
+//	scpi_add_error(E_CMD_EXPONENT_TOO_LARGE, NULL);
+//	scpi_add_error(E_DEV_CALIBRATION_FAILED, NULL);
+//	scpi_add_error(E_DEV_MEMORY_ERROR, NULL);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_add_error(E_DEV_MEMORY_ERROR, "lel");
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
+//	scpi_read_error(buf), printf("%s\n", buf);
 }
