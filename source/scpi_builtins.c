@@ -193,7 +193,7 @@ static void builtin_SYST_ERR_CLEAR(const SCPI_argval_t *args)
 
 static void builtin_SYST_VERSq(const SCPI_argval_t *args)
 {
-	scpi_send_string(scpi_device_version());
+	scpi_send_string("1999.0"); // implemented SCPI version
 }
 
 

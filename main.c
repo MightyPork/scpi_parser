@@ -111,13 +111,6 @@ const char *scpi_device_identifier(void)
 	return "FEL CVUT,DDS1,0,0.1";
 }
 
-
-const char *scpi_device_version(void)
-{
-	return "0.0.1";
-}
-
-
 int main()
 {
 	char buf[256];

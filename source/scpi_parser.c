@@ -122,7 +122,7 @@ static void pars_reset_cmd_keeplevel(void);
 // ------------------- MESSAGE SEND ------------------
 
 /** Send string, no \r\n */
-void scpi_send_string_no_eol(const char *message)
+void scpi_send_string_raw(const char *message)
 {
 	char c;
 	while ((c = *message++) != 0) {
@@ -134,7 +134,7 @@ void scpi_send_string_no_eol(const char *message)
 /** Send a message to master. Trailing newline is added. */
 void scpi_send_string(const char *message)
 {
-	scpi_send_string_no_eol(message);
+	scpi_send_string_raw(message);
 
 	scpi_send_byte_impl('\r');
 	scpi_send_byte_impl('\n');

@@ -19,8 +19,5 @@ extern __attribute__((weak)) void scpi_user_TSTq(void);
 /** Get device *IDN? string. */
 extern const char *scpi_device_identifier(void);
 
-/** Get device version string. */
-extern const char *scpi_device_version(void);
-
 // Provides:
 // const SCPI_command_t scpi_commands_builtin[];
