@@ -431,7 +431,7 @@ static void pars_cmd_colon(void)
 
 		if (pst.cur_level_i == 0 || pst.cmdbuf_kept) {
 			// top level command starts with colon (or after semicolon - reset level)
-			pars_reset_cmd();
+			pars_reset_cmd(); // clears keep flag
 		} else {
 			// colon after nothing - error
 			scpi_add_error(E_CMD_SYNTAX_ERROR, "Unexpected colon.");
@@ -443,6 +443,7 @@ static void pars_cmd_colon(void)
 		// internal colon - partial match
 		if (match_cmd(true)) {
 			// ok
+			pst.cmdbuf_kept = false; // drop the flag (needed for rejecting whitespace)
 		} else {
 			// error
 			err_no_such_command_partial();
@@ -517,7 +518,7 @@ static void pars_cmd_newline(void)
 /** Whitespace received when collecting command parts */
 static void pars_cmd_space(void)
 {
-	if (pst.cur_level_i == 0 && pst.charbuf_i == 0) {
+	if ((pst.cmdbuf_kept || pst.cur_level_i == 0) && pst.charbuf_i == 0) {
 		// leading whitespace, ignore
 		return;
 	}

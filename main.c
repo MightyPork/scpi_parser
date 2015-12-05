@@ -18,7 +18,7 @@ int main()
 	send_cmd("*SRE 4\n"); // enable SRQ on error
 	send_cmd("FOO:BAR:BAZ\n"); // invalid command causes error
 	send_cmd("SYST:ERR:COUNT?\n"); // error subsystem
-	send_cmd("SYST:ERR:NEXT?;COUNT?;NEXT?\n"); // semicolon works according to spec
+	send_cmd("SYST:ERR:NEXT?; COUNT?; NEXT?\n"); // semicolon works according to spec
 	send_cmd("DATA:BLOB #216abcdefghijklmnop\n"); // binary data block
 
 	send_cmd("APPLY:SINE 50, 1.0, 2.17\n"); // floats
