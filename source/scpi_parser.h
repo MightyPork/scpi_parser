@@ -40,7 +40,7 @@ typedef union {
  */
 typedef struct {
 	// levels MUST BE FIRST!
-	const char levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN+2]; // up to 4 parts (+? and \0)
+	const char levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN + 2]; // up to 4 parts (+? and \0)
 
 	// called when the command is completed. BLOB arg must be last in the argument list,
 	// and only the first part is collected.
@@ -83,20 +83,6 @@ void scpi_handle_byte(const uint8_t b);
  */
 void scpi_handle_string(const char* str);
 
-
-/** Add error to the error queue */
-void scpi_add_error(SCPI_error_t errno, const char *extra);
-
-/** Get number of errors in the error queue */
-uint8_t scpi_error_count(void);
-
-/**
- * Read and remove one entry from the error queue.
- * Returns 0,"No error" if the queue is empty.
- *
- * The entry is copied to the provided buffer, which must be 256 chars long.
- */
-void scpi_read_error(char *buf);
 
 /** Discard the rest of the currently processed blob */
 void scpi_discard_blob(void);

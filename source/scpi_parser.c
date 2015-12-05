@@ -11,8 +11,6 @@
 #include "scpi_regs.h"
 
 // Config
-#define ERR_QUEUE_LEN 4
-#define MAX_ERROR_LEN 255
 #define MAX_CHARBUF_LEN 255
 
 
@@ -52,11 +50,6 @@ typedef enum {
 
 /** Parser internal state struct */
 static struct {
-	char err_queue[ERR_QUEUE_LEN][MAX_ERROR_LEN + 1];
-	int8_t err_queue_r;
-	int8_t err_queue_w;
-	int8_t err_queue_used; // signed for backtracking
-
 	parser_state_t state; // current parser internal state
 
 	// string buffer, chars collected here until recognized
@@ -140,70 +133,7 @@ void scpi_send_string(const char *message)
 	scpi_send_byte_impl('\n');
 }
 
-
-// ------------------- ERROR QUEUE ---------------------
-
-void scpi_add_error(SCPI_error_t errno, const char *extra)
-{
-	bool added = true;
-	if (pst.err_queue_used >= ERR_QUEUE_LEN) {
-		errno = E_DEV_QUEUE_OVERFLOW;
-		extra = NULL;
-		added = false; // replaced only
-
-		// backtrack
-		pst.err_queue_w--;
-		pst.err_queue_used--;
-		if (pst.err_queue_w < 0) {
-			pst.err_queue_w = ERR_QUEUE_LEN - 1;
-		}
-	}
-
-	scpi_error_string(pst.err_queue[pst.err_queue_w], errno, extra);
-
-	pst.err_queue_w++;
-	pst.err_queue_used++;
-	if (pst.err_queue_w >= ERR_QUEUE_LEN) {
-		pst.err_queue_w = 0;
-	}
-
-	scpi_status_update();
-}
-
-
-void scpi_read_error(char *buf)
-{
-	if (pst.err_queue_used == 0) {
-		scpi_error_string(buf, E_NO_ERROR, NULL);
-		return;
-	}
-
-	strcpy(buf, pst.err_queue[pst.err_queue_r++]);
-	pst.err_queue_used--;
-
-	if (pst.err_queue_r >= ERR_QUEUE_LEN) {
-		pst.err_queue_r = 0;
-	}
-
-	scpi_status_update();
-}
-
-
-void scpi_clear_errors(void)
-{
-	pst.err_queue_r = 0;
-	pst.err_queue_w = 0;
-	pst.err_queue_used = 0;
-
-	scpi_status_update();
-}
-
-
-uint8_t scpi_error_count(void)
-{
-	return pst.err_queue_used;
-}
-
+// ------- Error shortcuts ----------
 
 static void err_no_such_command()
 {

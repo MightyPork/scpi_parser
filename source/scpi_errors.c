@@ -5,11 +5,103 @@
 #include <string.h>
 
 #include "scpi_errors.h"
+#include "scpi_regs.h"
+
+#define ERR_QUEUE_LEN 4
+#define MAX_ERROR_LEN 255
+
+// --- queue impl ---
+
+
+static struct {
+	char queue[ERR_QUEUE_LEN][MAX_ERROR_LEN + 1];
+	int8_t r_pos;
+	int8_t w_pos;
+	int8_t count; // signed for backtracking
+} erq;
+
+
+void scpi_add_error(SCPI_error_t errno, const char *extra)
+{
+	bool added = true;
+	if (erq.count >= ERR_QUEUE_LEN) {
+		errno = E_DEV_QUEUE_OVERFLOW;
+		extra = NULL;
+		added = false; // replaced only
+
+		// backtrack
+		erq.w_pos--;
+		erq.count--;
+		if (erq.w_pos < 0) {
+			erq.w_pos = ERR_QUEUE_LEN - 1;
+		}
+	}
+
+	scpi_error_string(erq.queue[erq.w_pos], errno, extra);
+
+	erq.w_pos++;
+	erq.count++;
+	if (erq.w_pos >= ERR_QUEUE_LEN) {
+		erq.w_pos = 0;
+	}
+
+	scpi_status_update();
+}
+
+
+void scpi_read_error_noremove(char *buf)
+{
+	if (erq.count == 0) {
+		scpi_error_string(buf, E_NO_ERROR, NULL);
+		return;
+	}
+
+	strcpy(buf, erq.queue[erq.r_pos]);
+}
+
+
+void scpi_read_error(char *buf)
+{
+	if (erq.count == 0) {
+		scpi_error_string(buf, E_NO_ERROR, NULL);
+		return;
+	}
+
+	strcpy(buf, erq.queue[erq.r_pos++]);
+	erq.count--;
+
+	if (erq.r_pos >= ERR_QUEUE_LEN) {
+		erq.r_pos = 0;
+	}
+
+	scpi_status_update();
+}
+
+
+void scpi_clear_errors(void)
+{
+	erq.r_pos = 0;
+	erq.w_pos = 0;
+	erq.count = 0;
+
+	scpi_status_update();
+}
+
+
+uint8_t scpi_error_count(void)
+{
+	return erq.count;
+}
+
+
+// ---- table ----
+
 
 typedef struct {
 	const int16_t errno;
 	const char *msg;
 } SCPI_error_desc;
+
 
 static const SCPI_error_desc error_table[] = {
 	{ 0, "No error"},
@@ -184,3 +276,4 @@ void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
 
 	sprintf(buffer, "\""); // "
 }
+

@@ -132,6 +132,7 @@ typedef enum {
 /** Get SCPI error message (alone) */
 const char *scpi_error_message(SCPI_error_t errno);
 
+
 /**
  * Get SCPI error string for reporting:
  * <code>,"<message>[; <extra>]"
@@ -139,3 +140,24 @@ const char *scpi_error_message(SCPI_error_t errno);
  * extra can be NULL to skip the optional part.
  */
 void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra);
+
+
+/** Add error to the error queue */
+void scpi_add_error(SCPI_error_t errno, const char *extra);
+
+
+/** Get number of errors in the error queue */
+uint8_t scpi_error_count(void);
+
+
+/**
+ * Read and remove one entry from the error queue.
+ * Returns 0,"No error" if the queue is empty.
+ *
+ * The entry is copied to the provided buffer, which must be 256 chars long.
+ */
+void scpi_read_error(char *buf);
+
+
+/** Read error, do not remove from queue */
+void scpi_read_error_noremove(char *buf);

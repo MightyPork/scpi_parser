@@ -6,16 +6,23 @@
 
 // ------- TESTING ----------
 
+static void send_cmd(const char *cmd)
+{
+	printf("\n> %s\n", cmd);
+	scpi_handle_string(cmd);
+}
+
 int main()
 {
-	scpi_handle_string("*IDN?\n");
-	scpi_handle_string("*SRE 4\n");
-	scpi_handle_string("FOO:BAR:BAZ\n");
-	scpi_handle_string("SYST:ERR:COUNT?\n");
-	scpi_handle_string("SYST:ERR?\n");
-	scpi_handle_string("SYST:ERR?\n");
-	scpi_handle_string("DATA:BLOB #216abcdefghijklmnop\n");
-	scpi_handle_string("SYST:ERR?\n");
+	send_cmd("*IDN?\n"); // builtin commands..
+	send_cmd("*SRE 4\n"); // enable SRQ on error
+	send_cmd("FOO:BAR:BAZ\n"); // invalid command causes error
+	send_cmd("SYST:ERR:COUNT?\n"); // error subsystem
+	send_cmd("SYST:ERR:NEXT?;COUNT?;NEXT?\n"); // semicolon works according to spec
+	send_cmd("DATA:BLOB #216abcdefghijklmnop\n"); // binary data block
+
+	send_cmd("APPLY:SINE 50, 1.0, 2.17\n"); // floats
+	send_cmd("DISP:TEXT \"Hello world\"\n"); // string
 }
 
 
@@ -35,37 +42,43 @@ const char *scpi_device_identifier(void)
 
 void scpi_service_request_impl(void)
 {
-	printf("[SRQ]\n");
+	// NOTE: Actual instrument should send SRQ event somehow
+
+	printf("[SRQ] - error: ");
+	char buf[256];
+	scpi_read_error_noremove(buf); // show error message (for debug)
+	printf("%s\n", buf);
 }
 
 
-// ---- COMMANDS ----
+// ---- INSTRUMENT COMMANDS ----
 
 void cmd_APPL_SIN_cb(const SCPI_argval_t *args)
 {
-	printf("cb  APPLy:SINe %d, %f, %f\n", args[0].INT, args[0].FLOAT, args[0].FLOAT);
+	printf("cb APPLy:SINe %d, %f, %f\n", args[0].INT, args[1].FLOAT, args[2].FLOAT);
 }
 
 
 
 void cmd_DISP_TEXT_cb(const SCPI_argval_t *args)
 {
-	printf("cb  DISPlay:TEXT %s\n", args[0].STRING);
+	printf("cb DISPlay:TEXT %s\n", args[0].STRING);
 }
 
 
 void cmd_DATA_BLOB_cb(const SCPI_argval_t *args)
 {
-	printf("cb  DATA:BLOB <%d>\n", args[1].BLOB_LEN);
+	printf("cb DATA:BLOB <%d>\n", args[0].BLOB_LEN);
 }
 
 
 void cmd_DATA_BLOB_data(const uint8_t *bytes)
 {
-	printf("blob item: %s\n", bytes);
+	printf("binary data: \"%s\"\n", bytes);
 }
 
 
+// Command definition (mandatory commands are built-in)
 const SCPI_command_t scpi_commands[] = {
 	{
 		.levels = {"APPLy", "SINe"},
