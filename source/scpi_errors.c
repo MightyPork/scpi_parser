@@ -23,11 +23,9 @@ static struct {
 
 void scpi_add_error(int16_t errno, const char *extra)
 {
-	bool added = true;
 	if (erq.count >= ERR_QUEUE_LEN) {
 		errno = E_DEV_QUEUE_OVERFLOW;
 		extra = NULL;
-		added = false; // replaced only
 
 		// backtrack
 		erq.w_pos--;

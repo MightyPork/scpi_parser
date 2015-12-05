@@ -16,7 +16,7 @@
 
 // Char matching
 #define INRANGE(c, a, b) ((c) >= (a) && (c) <= (b))
-#define IS_WHITESPACE(c) (INRANGE((c), 0, 9) || INRANGE((c), 11, 32))
+#define IS_WHITESPACE(c) ((c) <= 9 || INRANGE((c), 11, 32))
 
 #define IS_LCASE_CHAR(c) INRANGE((c), 'a', 'z')
 #define IS_UCASE_CHAR(c) INRANGE((c), 'A', 'Z')
@@ -135,7 +135,7 @@ void scpi_send_string(const char *message)
 
 // ------- Error shortcuts ----------
 
-static void err_no_such_command()
+static void err_no_such_command(void)
 {
 	char *b = ebuf;
 	for (int i = 0; i < pst.cur_level_i; i++) {
@@ -147,7 +147,7 @@ static void err_no_such_command()
 }
 
 
-static void err_no_such_command_partial()
+static void err_no_such_command_partial(void)
 {
 	char *b = ebuf;
 	for (int i = 0; i < pst.cur_level_i; i++) {

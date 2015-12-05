@@ -12,7 +12,7 @@ static void send_cmd(const char *cmd)
 	scpi_handle_string(cmd);
 }
 
-int main()
+int main(void)
 {
 	send_cmd("*IDN?\n"); // builtin commands..
 	send_cmd("*SRE 4\n"); // enable SRQ on error
@@ -93,6 +93,8 @@ void cmd_DATA_BLOB_data(const uint8_t *bytes)
 
 void cmd_USRERR_cb(const SCPI_argval_t *args)
 {
+	(void) args;
+
 	printf("cb USRERR - raising user error 10.\n");
 	scpi_add_error(10, "Custom error message...");
 }
