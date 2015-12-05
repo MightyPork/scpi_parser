@@ -55,6 +55,7 @@ static void builtin_IDNq(const SCPI_argval_t *args)
 static void builtin_ESE(const SCPI_argval_t *args)
 {
 	SCPI_REG_SESR_EN.u8 = (uint8_t) args[0].INT;
+	scpi_status_update();
 }
 
 
@@ -69,6 +70,9 @@ static void builtin_ESRq(const SCPI_argval_t *args)
 {
 	sprintf(sbuf, "%d", SCPI_REG_SESR.u8);
 	scpi_send_string(sbuf);
+
+	SCPI_REG_SESR.u8 = 0; // register cleared
+	scpi_status_update();
 }
 
 
@@ -77,6 +81,7 @@ static void builtin_OPC(const SCPI_argval_t *args)
 	// implementation for instruments with no overlapping commands.
 	// Can be overridden in the user commands.
 	SCPI_REG_SESR.OPC = 1;
+	scpi_status_update();
 }
 
 
@@ -93,6 +98,7 @@ static void builtin_OPCq(const SCPI_argval_t *args)
 static void builtin_SRE(const SCPI_argval_t *args)
 {
 	SCPI_REG_SRE.u8 = (uint8_t) args[0].INT;
+	scpi_status_update();
 }
 
 
@@ -203,6 +209,7 @@ static void builtin_STAT_OPER_EVENq(const SCPI_argval_t *args)
 	sprintf(sbuf, "%d", SCPI_REG_OPER.u16);
 	SCPI_REG_OPER.u16 = 0x0000;
 	scpi_send_string(sbuf);
+	scpi_status_update();
 }
 
 
@@ -217,6 +224,7 @@ static void builtin_STAT_OPER_CONDq(const SCPI_argval_t *args)
 static void builtin_STAT_OPER_ENAB(const SCPI_argval_t *args)
 {
 	SCPI_REG_OPER.u16 = (uint16_t) args[0].INT; // set enable flags
+	scpi_status_update();
 }
 
 
@@ -233,6 +241,7 @@ static void builtin_STAT_QUES_EVENq(const SCPI_argval_t *args)
 	sprintf(sbuf, "%d", SCPI_REG_QUES.u16);
 	SCPI_REG_QUES.u16 = 0x0000;
 	scpi_send_string(sbuf);
+	scpi_status_update();
 }
 
 
@@ -247,6 +256,7 @@ static void builtin_STAT_QUES_CONDq(const SCPI_argval_t *args)
 static void builtin_STAT_QUES_ENAB(const SCPI_argval_t *args)
 {
 	SCPI_REG_QUES.u16 = (uint16_t) args[0].INT; // set enable flags
+	scpi_status_update();
 }
 
 
@@ -266,7 +276,7 @@ static void builtin_STAT_PRES(const SCPI_argval_t *args)
 
 	SCPI_REG_QUES_EN.u16 = 0;
 	SCPI_REG_OPER_EN.u16 = 0;
-
+	scpi_status_update();
 }
 
 
