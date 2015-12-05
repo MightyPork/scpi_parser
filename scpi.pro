@@ -4,21 +4,21 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-    scpi_parser.c \
-    main.c \
-    scpi_errors.c \
-    scpi_regs.c \
-    scpi_builtins.c
+	main.c \
+	source/scpi_parser.c \
+	source/scpi_errors.c \
+	source/scpi_regs.c \
+	source/scpi_builtins.c
 
 DISTFILES += \
-    style.astylerc \
-    .gitignore \
-    LICENSE \
-    README.md \
-    Makefile
+	style.astylerc \
+	.gitignore \
+	LICENSE \
+	README.md \
+	Makefile
 
 HEADERS += \
-    scpi_parser.h \
-    scpi_errors.h \
-    scpi_regs.h \
-    scpi_builtins.h
+	source/scpi_parser.h \
+	source/scpi_errors.h \
+	source/scpi_regs.h \
+	source/scpi_builtins.h

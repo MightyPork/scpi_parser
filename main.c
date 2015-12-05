@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "scpi_parser.h"
+
+#include "source/scpi_parser.h"
 
 
 void cmd_APPL_SIN_cb(const SCPI_argval_t *args)
