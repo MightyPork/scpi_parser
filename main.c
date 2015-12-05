@@ -23,10 +23,23 @@ int main()
 
 	send_cmd("APPLY:SINE 50, 1.0, 2.17\n"); // floats
 	send_cmd("DISP:TEXT \"Hello world\"\n"); // string
+
+	// test user error
+	send_cmd("*CLS\n"); // string
+	send_cmd("USERERROR\n"); // string
+	send_cmd("SYST:ERR:COUNT?\n");
+	send_cmd("SYST:ERR:NEXT?\n");
 }
 
 
 // ---- Test device impl ----
+
+
+const SCPI_error_desc scpi_user_errors[] = {
+	{10, "Custom error"},
+	{0} // terminator
+};
+
 
 void scpi_send_byte_impl(uint8_t b)
 {
@@ -78,6 +91,13 @@ void cmd_DATA_BLOB_data(const uint8_t *bytes)
 }
 
 
+void cmd_USRERR_cb(const SCPI_argval_t *args)
+{
+	printf("cb USRERR - raising user error 10.\n");
+	scpi_add_error(10, "Custom error message...");
+}
+
+
 // Command definition (mandatory commands are built-in)
 const SCPI_command_t scpi_commands[] = {
 	{
@@ -96,6 +116,10 @@ const SCPI_command_t scpi_commands[] = {
 		.callback = cmd_DATA_BLOB_cb,
 		.blob_chunk = 4,
 		.blob_callback = cmd_DATA_BLOB_data
+	},
+	{
+		.levels = {"USeRERRor"},
+		.callback = cmd_USRERR_cb
 	},
 	{0} // end marker
 };

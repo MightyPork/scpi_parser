@@ -2,8 +2,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+typedef struct {
+	const int16_t errno;
+	const char *msg;
+} SCPI_error_desc;
+
+/** User error definitions */
+extern const SCPI_error_desc scpi_user_errors[];
+
 // SCPI error constants
-typedef enum {
+enum {
 	E_NO_ERROR = 0,
 	E_COMMAND_ERROR = -100,
 	E_CMD_INVALID_CHARACTER = -101,
@@ -126,11 +134,11 @@ typedef enum {
 	E_USER_REQUEST = -600,
 	E_REQUEST_CONTROL = -700,
 	E_OPERATION_COMPLETE = -800,
-} SCPI_error_t;
+};
 
 
 /** Get SCPI error message (alone) */
-const char *scpi_error_message(SCPI_error_t errno);
+const char *scpi_error_message(int16_t errno);
 
 
 /**
@@ -139,11 +147,11 @@ const char *scpi_error_message(SCPI_error_t errno);
  *
  * extra can be NULL to skip the optional part.
  */
-void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra);
+void scpi_error_string(char *buffer, int16_t errno, const char *extra);
 
 
 /** Add error to the error queue */
-void scpi_add_error(SCPI_error_t errno, const char *extra);
+void scpi_add_error(int16_t errno, const char *extra);
 
 
 /** Get number of errors in the error queue */

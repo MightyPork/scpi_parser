@@ -52,8 +52,8 @@ typedef union {
 
 typedef union {
 	struct __attribute__((packed)) {
-		bool OPC: 1;
-		bool REQ_CONTROL: 1;
+		bool OPC: 1; // operation complete - only for instruments with overlapping commands
+		bool REQ_CONTROL: 1; // GPIB-only
 		bool QUERY_ERROR: 1;
 		bool DEV_ERROR: 1;
 		bool EXE_ERROR: 1;

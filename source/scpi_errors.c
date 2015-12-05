@@ -21,7 +21,7 @@ static struct {
 } erq;
 
 
-void scpi_add_error(SCPI_error_t errno, const char *extra)
+void scpi_add_error(int16_t errno, const char *extra)
 {
 	bool added = true;
 	if (erq.count >= ERR_QUEUE_LEN) {
@@ -45,6 +45,18 @@ void scpi_add_error(SCPI_error_t errno, const char *extra)
 		erq.w_pos = 0;
 	}
 
+	// error type status flags
+	if (errno >= -499 && errno <= -400) {
+		SCPI_REG_SESR.QUERY_ERROR = true;
+	} else if ((errno >= -399 && errno <= -300) || errno > 0) {
+		SCPI_REG_SESR.DEV_ERROR = true;
+	} else if (errno >= -299 && errno <= -200) {
+		SCPI_REG_SESR.EXE_ERROR = true;
+	} else if (errno >= -199 && errno <= -100) {
+		SCPI_REG_SESR.CMD_ERROR = true;
+	}
+
+	// update the error queue bit and propagate the above flags
 	scpi_status_update();
 }
 
@@ -96,15 +108,7 @@ uint8_t scpi_error_count(void)
 
 // ---- table ----
 
-
-typedef struct {
-	const int16_t errno;
-	const char *msg;
-} SCPI_error_desc;
-
-
 static const SCPI_error_desc error_table[] = {
-	{ 0, "No error"},
 	{ -100, "Command error"},
 	{ -101, "Invalid character"},
 	{ -102, "Syntax error"},
@@ -226,23 +230,38 @@ static const SCPI_error_desc error_table[] = {
 	{ -600, "User request"},
 	{ -700, "Request control"},
 	{ -800, "Operation complete"},
-	{ -9999} // end mark
+	{0} // end mark
 };
 
 
-const char * scpi_error_message(SCPI_error_t errno)
+const char * scpi_error_message(int16_t errno)
 {
-	for (int i = 0; error_table[i].errno != -9999; i++) {
-		if (error_table[i].errno == errno) {
-			return error_table[i].msg;
+	if (errno == 0) {
+		// ok state
+		return "No error";
+
+	} else if (errno < 0) {
+		// standard errors
+		for (int i = 0; (i == 0 || error_table[i].errno != 0); i++) {
+			if (error_table[i].errno == errno) {
+				return error_table[i].msg;
+			}
+		}
+
+	} else {
+		// user error
+		for (int i = 0; scpi_user_errors[i].errno != 0; i++) {
+			if (scpi_user_errors[i].errno == errno) {
+				return scpi_user_errors[i].msg;
+			}
 		}
 	}
 
-	return NULL;
+	return "Unknown error";
 }
 
 
-void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
+void scpi_error_string(char *buffer, int16_t errno, const char *extra)
 {
 	const char *msg = scpi_error_message(errno);
 
@@ -251,8 +270,6 @@ void scpi_error_string(char *buffer, SCPI_error_t errno, const char *extra)
 
 	len = offs = sprintf(buffer, "%d,\"", errno); // <code>,"
 	buffer += offs;
-
-	if (msg == NULL) msg = "Unknown error";
 
 	offs = sprintf(buffer, "%s", msg); // Error message
 	len += offs;
