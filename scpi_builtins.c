@@ -116,9 +116,10 @@ static void builtin_WAI(const SCPI_argval_t *args)
 }
 
 
-static void builtin_SYST_ERRq(const SCPI_argval_t *args)
+static void builtin_SYST_ERR_NEXTq(const SCPI_argval_t *args)
 {
-	// TODO
+	scpi_read_error(sbuf);
+	scpi_send_string(sbuf);
 }
 
 
@@ -130,54 +131,74 @@ static void builtin_SYST_VERSq(const SCPI_argval_t *args)
 
 static void builtin_STAT_OPER_EVENq(const SCPI_argval_t *args)
 {
-	// TODO
+	// read and clear
+	sprintf(sbuf, "%d", SCPI_REG_OPER.u16);
+	SCPI_REG_OPER.u16 = 0x0000;
+	scpi_send_string(sbuf);
 }
 
 
 static void builtin_STAT_OPER_CONDq(const SCPI_argval_t *args)
 {
-	// TODO
+	// read and keep
+	sprintf(sbuf, "%d", SCPI_REG_OPER.u16);
+	scpi_send_string(sbuf);
 }
 
 
 static void builtin_STAT_OPER_ENAB(const SCPI_argval_t *args)
 {
-	// TODO
+	SCPI_REG_OPER.u16 = (uint16_t) args[0].INT; // set enable flags
 }
 
 
 static void builtin_STAT_OPER_ENABq(const SCPI_argval_t *args)
 {
-	// TODO
+	sprintf(sbuf, "%d", SCPI_REG_OPER_EN.u16);
+	scpi_send_string(sbuf);
 }
 
 
 static void builtin_STAT_QUES_EVENq(const SCPI_argval_t *args)
 {
-	// TODO
+	// read and clear
+	sprintf(sbuf, "%d", SCPI_REG_QUES.u16);
+	SCPI_REG_QUES.u16 = 0x0000;
+	scpi_send_string(sbuf);
 }
 
 
 static void builtin_STAT_QUES_CONDq(const SCPI_argval_t *args)
 {
-	// TODO
+	// read and keep
+	sprintf(sbuf, "%d", SCPI_REG_QUES.u16);
+	scpi_send_string(sbuf);
 }
 
 
 static void builtin_STAT_QUES_ENAB(const SCPI_argval_t *args)
 {
-	// TODO
+	SCPI_REG_QUES.u16 = (uint16_t) args[0].INT; // set enable flags
 }
 
 
 static void builtin_STAT_QUES_ENABq(const SCPI_argval_t *args)
 {
-	// TODO
+	sprintf(sbuf, "%d", SCPI_REG_QUES_EN.u16);
+	scpi_send_string(sbuf);
 }
+
 
 static void builtin_STAT_PRES(const SCPI_argval_t *args)
 {
-	// TODO
+	// Command required by SCPI spec, useless for this SCPI implementation.
+	// This is meant to preset transition and filter registers, which are not used here.
+
+	// Do not use this command, only defined to satisfy the spec.
+
+	SCPI_REG_QUES_EN.u16 = 0;
+	SCPI_REG_OPER_EN.u16 = 0;
+
 }
 
 
@@ -243,11 +264,11 @@ const SCPI_command_t scpi_commands_builtin[] = {
 	// SYSTem
 	{
 		.levels = {"SYSTem", "ERRor?"},
-		.callback = builtin_SYST_ERRq
+		.callback = builtin_SYST_ERR_NEXTq
 	},
 	{
 		.levels = {"SYSTem", "ERRor", "NEXT?"},
-		.callback = builtin_SYST_ERRq
+		.callback = builtin_SYST_ERR_NEXTq
 	},
 	{
 		.levels = {"SYSTem", "VERSion?"},
