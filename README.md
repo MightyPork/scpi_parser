@@ -20,5 +20,12 @@ See main.c for example of how to use the library.
 
 ## What is missing
 
+- Setting error type flags in the ESR when error is added to queue
+- There may be some bugs in the status registers (not tested much)
+- Character data argument ("string without quotes", enum-like)
+- Number units and metric suffixes (k,M,G,m,u,n)
+- DEF, MIN, MAX, INF, NINF argument values for numbers
 
+Support for units and "constants" (DEF etc) in numeric fields will need some larger changes to the numeric parser and `SCPI_argval_t`.
 
+Feel free to propose a pull request implementing any missing features.
