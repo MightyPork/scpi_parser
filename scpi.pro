@@ -7,7 +7,8 @@ SOURCES += \
     scpi_parser.c \
     main.c \
     scpi_errors.c \
-    scpi_regs.c
+    scpi_regs.c \
+    scpi_builtins.c
 
 DISTFILES += \
     style.astylerc \
@@ -19,4 +20,5 @@ DISTFILES += \
 HEADERS += \
     scpi_parser.h \
     scpi_errors.h \
-    scpi_regs.h
+    scpi_regs.h \
+    scpi_builtins.h

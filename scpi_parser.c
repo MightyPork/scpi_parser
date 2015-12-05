@@ -7,6 +7,8 @@
 
 #include "scpi_parser.h"
 #include "scpi_errors.h"
+#include "scpi_builtins.h"
+#include "scpi_regs.h"
 
 // Config
 #define ERR_QUEUE_LEN 4
@@ -84,9 +86,6 @@ static struct {
 // buffer for error messages
 static char ebuf[256];
 
-// response buffer
-static char sbuf[256];
-
 // ---------------- PRIVATE PROTOTYPES ------------------
 
 // Command parsing
@@ -118,175 +117,6 @@ static void charbuf_append(char c);
 // Reset
 static void pars_reset_cmd(void);
 static void pars_reset_cmd_keeplevel(void);
-
-
-
-// ---------------- BUILTIN SCPI COMMANDS ------------------
-
-static void builtin_CLS(const SCPI_argval_t *args)
-{
-	// clear the registers
-	SCPI_REG_SESR.u8 = 0;
-	SCPI_REG_OPER.u16 = 0;
-	SCPI_REG_QUES.u16 = 0;
-	scpi_clear_errors();
-
-	if (scpi_user_CLS) {
-		scpi_user_CLS();
-	}
-
-	scpi_status_update(); // flags
-}
-
-
-static void builtin_RST(const SCPI_argval_t *args)
-{
-	if (scpi_user_RST) {
-		scpi_user_RST();
-	}
-}
-
-
-static void builtin_TSTq(const SCPI_argval_t *args)
-{
-	if (scpi_user_TSTq) {
-		scpi_user_TSTq();
-	}
-}
-
-
-static void builtin_IDNq(const SCPI_argval_t *args)
-{
-	scpi_send_string(scpi_device_identifier());
-}
-
-
-static void builtin_ESE(const SCPI_argval_t *args)
-{
-	SCPI_REG_SESR_EN.u8 = (uint8_t) args[0].INT;
-}
-
-
-static void builtin_ESEq(const SCPI_argval_t *args)
-{
-	sprintf(sbuf, "%d", SCPI_REG_SESR_EN.u8);
-	scpi_send_string(ebuf);
-}
-
-
-static void builtin_ESRq(const SCPI_argval_t *args)
-{
-	sprintf(sbuf, "%d", SCPI_REG_SESR.u8);
-	scpi_send_string(ebuf);
-}
-
-
-static void builtin_OPC(const SCPI_argval_t *args)
-{
-	// implementation for instruments with no overlapping commands.
-	// Can be overridden in the user commands.
-	SCPI_REG_SESR.OPC = 1;
-}
-
-
-static void builtin_OPCq(const SCPI_argval_t *args)
-{
-	// implementation for instruments with no overlapping commands.
-	// Can be overridden in the user commands.
-	// (would be): sprintf(sbuf, "%d", SCPI_REG_SESR.OPC);
-
-	scpi_send_string("1");
-}
-
-
-static void builtin_SRE(const SCPI_argval_t *args)
-{
-	SCPI_REG_SRE.u8 = (uint8_t) args[0].INT;
-}
-
-
-static void builtin_SREq(const SCPI_argval_t *args)
-{
-	sprintf(sbuf, "%d", SCPI_REG_SRE.u8);
-	scpi_send_string(ebuf);
-}
-
-
-static void builtin_STBq(const SCPI_argval_t *args)
-{
-	sprintf(sbuf, "%d", SCPI_REG_STB.u8);
-	scpi_send_string(ebuf);
-}
-
-
-static void builtin_WAI(const SCPI_argval_t *args)
-{
-	// no-op
-}
-
-
-static const SCPI_command_t scpi_commands_builtin[] = {
-	// ---- COMMON COMMANDS ----
-	{
-		.levels = {"*CLS"},
-		.callback = builtin_CLS
-	},
-	{
-		.levels = {"*ESE"},
-		.params = {SCPI_DT_INT},
-		.callback = builtin_ESE
-	},
-	{
-		.levels = {"*ESE?"},
-		.callback = builtin_ESEq
-	},
-	{
-		.levels = {"*ESR?"},
-		.callback = builtin_ESRq
-	},
-	{
-		.levels = {"*IDN?"},
-		.callback = builtin_IDNq
-	},
-	{
-		.levels = {"*OPC"},
-		.callback = builtin_OPC
-	},
-	{
-		.levels = {"*OPCq"},
-		.callback = builtin_OPCq
-	},
-	{
-		.levels = {"*RST"},
-		.callback = builtin_RST
-	},
-	{
-		.levels = {"*SRE"},
-		.params = {SCPI_DT_INT},
-		.callback = builtin_SRE
-	},
-	{
-		.levels = {"*SRE?"},
-		.callback = builtin_SREq
-	},
-	{
-		.levels = {"*STB?"},
-		.callback = builtin_STBq
-	},
-	{
-		.levels = {"*WAI"},
-		.callback = builtin_WAI
-	},
-	{
-		.levels = {"*TST?"},
-		.callback = builtin_TSTq
-	},
-	// ---- REQUIRED SYST COMMANDS ----
-
-
-	{0} // end marker
-};
-
 
 
 // ------------------- MESSAGE SEND ------------------

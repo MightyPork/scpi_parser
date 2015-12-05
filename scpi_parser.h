@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "scpi_errors.h"
+#include "scpi_builtins.h"
 #include "scpi_regs.h"
 
 #define SCPI_MAX_CMD_LEN 12
@@ -39,7 +40,7 @@ typedef union {
  */
 typedef struct {
 	// levels MUST BE FIRST!
-	const char levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN]; // up to 4 parts
+	const char levels[SCPI_MAX_LEVEL_COUNT][SCPI_MAX_CMD_LEN+2]; // up to 4 parts (+? and \0)
 
 	// called when the command is completed. BLOB arg must be last in the argument list,
 	// and only the first part is collected.
@@ -61,21 +62,11 @@ typedef struct {
 // Zero terminated command struct array - must be defined.
 extern const SCPI_command_t scpi_commands[];
 
+// provided by scpi_builtins.h
+extern const SCPI_command_t scpi_commands_builtin[];
+
 /** Send a byte to master (may be buffered) */
 extern void scpi_send_byte_impl(uint8_t b);
-
-/** *CLS command callback - clear non-SCPI device state */
-extern __attribute__((weak)) void scpi_user_CLS(void);
-
-/** *RST command callback - reset non-SCPI device state */
-extern __attribute__((weak)) void scpi_user_RST(void);
-
-/** *TST? command callback - perform self test and send response back. */
-extern __attribute__((weak)) void scpi_user_TSTq(void);
-
-/** Get device identifier. Implemented as a callback to allow dynamic serial number */
-extern const char *scpi_device_identifier(void);
-
 
 
 // --------------- functions --------------------

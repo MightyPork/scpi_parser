@@ -111,6 +111,11 @@ const char *scpi_device_identifier(void)
 }
 
 
+const char *scpi_device_version(void)
+{
+	return "0.0.1";
+}
+
 
 int main()
 {
@@ -134,7 +139,7 @@ int main()
 	//const char *inp = "FOO\nDATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\nAPPLY:MOO\n";
 	//const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";
 
-	const char *inp = "*idn?\n";
+	const char *inp = "*idn?;*sre?;*cls;";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
