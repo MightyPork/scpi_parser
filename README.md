@@ -7,6 +7,8 @@ The implementation is not 100% complete, but it's sufficient for basic SCPI comm
 ## What's supported
 
 - The hierarchical header model (commands with colon)
+- Long and short header variants (eg. `SYSTem?`)
+- Easy configuration with one const array of structs and callback functions (see `main.c`)
 - Semicolon for chaining commands on the same level
 - String, Int, Float, Bool arguments
 - Block data argument with callback each N received bytes (configurable)
