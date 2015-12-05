@@ -77,6 +77,13 @@ extern void scpi_send_byte_impl(uint8_t b);
  */
 void scpi_handle_byte(const uint8_t b);
 
+/**
+ * SCPI parser - handle a string (multiple chars) at once.
+ * String is interpreted as is, nothing is added. Must be terminated with \0.
+ */
+void scpi_handle_string(const char* str);
+
+
 /** Add error to the error queue */
 void scpi_add_error(SCPI_error_t errno, const char *extra);
 

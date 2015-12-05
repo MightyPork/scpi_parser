@@ -230,6 +230,14 @@ static void err_no_such_command_partial()
 
 // ----------------- INPUT PARSING ----------------
 
+void scpi_handle_string(const char* str)
+{
+	while (*str != 0) {
+		scpi_handle_byte(*str);
+		str++;
+	}
+}
+
 void scpi_handle_byte(const uint8_t b)
 {
 	const char c = (char) b;
