@@ -9,7 +9,7 @@
 #include "scpi_regs.h"
 
 // response buffer
-static char sbuf[256];
+static char sbuf[256]; // must be long enough to contain an error message
 
 
 // ---------------- BUILTIN SCPI COMMANDS ------------------

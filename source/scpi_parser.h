@@ -6,8 +6,8 @@
 #include "scpi_builtins.h"
 #include "scpi_regs.h"
 
-#define SCPI_MAX_CMD_LEN 12
-#define SCPI_MAX_STRING_LEN 12
+#define SCPI_MAX_CMD_LEN 16 // 12 according to spec
+#define SCPI_MAX_STRING_LEN 64 // 12 according to spec
 #define SCPI_MAX_LEVEL_COUNT 4
 #define SCPI_MAX_PARAM_COUNT 4
 
@@ -17,6 +17,7 @@ typedef enum {
 	SCPI_DT_FLOAT, // float with support for scientific notation
 	SCPI_DT_INT, // integer (may be signed)
 	SCPI_DT_BOOL, // 0, 1, ON, OFF
+	SCPI_DT_CHARDATA, // string without quotes - [A-Za-z0-9_]
 	SCPI_DT_STRING, // quoted string, max 12 chars; no escapes.
 	SCPI_DT_BLOB, // binary block, callback: uint32_t holding number of bytes
 } SCPI_datatype_t;
@@ -25,10 +26,14 @@ typedef enum {
 /** Arguemnt value (union) */
 typedef union {
 	float FLOAT;
+
 	int32_t INT;
-	bool BOOL;
-	char STRING[SCPI_MAX_STRING_LEN + 1]; // terminator
 	uint32_t BLOB_LEN;
+
+	bool BOOL;
+
+	char STRING[SCPI_MAX_STRING_LEN + 1];
+	char CHARDATA[SCPI_MAX_STRING_LEN + 1];
 } SCPI_argval_t;
 
 

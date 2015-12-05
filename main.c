@@ -29,6 +29,9 @@ int main(void)
 	send_cmd("USERERROR\n"); // string
 	send_cmd("SYST:ERR:COUNT?\n");
 	send_cmd("SYST:ERR:NEXT?\n");
+
+	// test chardata
+	send_cmd("CHARD FOOBAR123_MOO_abcdef_HELLO, 12\n");
 }
 
 
@@ -100,6 +103,12 @@ void cmd_USRERR_cb(const SCPI_argval_t *args)
 }
 
 
+void cmd_CHARD_cb(const SCPI_argval_t *args)
+{
+	printf("CHARData cb: %s, arg2 = %d", args[0].CHARDATA, args[1].INT);
+}
+
+
 // Command definition (mandatory commands are built-in)
 const SCPI_command_t scpi_commands[] = {
 	{
@@ -122,6 +131,11 @@ const SCPI_command_t scpi_commands[] = {
 	{
 		.levels = {"USeRERRor"},
 		.callback = cmd_USRERR_cb
+	},
+	{
+		.levels = {"CHARData"},
+		.params = {SCPI_DT_CHARDATA, SCPI_DT_INT},
+		.callback = cmd_CHARD_cb
 	},
 	{/*END*/}
 };

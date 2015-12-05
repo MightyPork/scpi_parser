@@ -21,11 +21,16 @@
 #define IS_LCASE_CHAR(c) INRANGE((c), 'a', 'z')
 #define IS_UCASE_CHAR(c) INRANGE((c), 'A', 'Z')
 #define IS_NUMBER_CHAR(c) INRANGE((c), '0', '9')
-#define IS_MULTIPLIER_CHAR(c) ((c) == 'k' || (c) == 'M' || (c) == 'G' || (c) == 'm' || (c) == 'u' || (c) == 'n' || (c) == 'p')
+//#define IS_MULTIPLIER_CHAR(c) ((c) == 'k' || (c) == 'M' || (c) == 'G' || (c) == 'm' || (c) == 'u' || (c) == 'n' || (c) == 'p')
 
-#define IS_IDENT_CHAR(c) (IS_LCASE_CHAR((c)) || IS_UCASE_CHAR((c)) || IS_NUMBER_CHAR((c)) || (c) == '_' || (c) == '*' || (c) == '?')
-#define IS_INT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '-' || (c) == '+' || IS_MULTIPLIER_CHAR((c)))
-#define IS_FLOAT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (c) == '+' || (c) == '-' || IS_MULTIPLIER_CHAR((c)))
+// A-Z a-z 0-9 _
+#define IS_CHARDATA_CHAR(c) (IS_LCASE_CHAR((c)) || IS_UCASE_CHAR((c)) || IS_NUMBER_CHAR((c)) || (c) == '_')
+// A-Z a-z 0-9 _ * ?
+#define IS_IDENT_CHAR(c) (IS_CHARDATA_CHAR((c)) || (c) == '*' || (c) == '?')
+// 0-9 - +
+#define IS_INT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '-' || (c) == '+')
+// 0-9 . + - eE
+#define IS_FLOAT_CHAR(c) (IS_NUMBER_CHAR((c)) || (c) == '.' || (c) == 'e' || (c) == 'E' || (c) == '+' || (c) == '-')
 
 #define CHAR_TO_LOWER(ucase) ((ucase) + 32)
 #define CHAR_TO_UPPER(lcase) ((lcase) - 32)
@@ -77,7 +82,7 @@ static struct {
 
 
 // buffer for error messages
-static char ebuf[256];
+static char ebuf[100];
 
 // ---------------- PRIVATE PROTOTYPES ------------------
 
@@ -718,6 +723,17 @@ static void pars_arg_char(char c)
 			}
 			break;
 
+		case SCPI_DT_CHARDATA:
+			if (!IS_CHARDATA_CHAR(c)) {
+				sprintf(ebuf, "'%c' not allowed in CHARDATA.", c);
+				scpi_add_error(E_CMD_INVALID_CHARACTER_DATA, ebuf);
+
+				pst.state = PARS_DISCARD_LINE;
+			} else {
+				charbuf_append(c);
+			}
+			break;
+
 		case SCPI_DT_STRING:
 			if (c == '\'' || c == '"') {
 				pst.state = PARS_ARG_STRING;
@@ -857,11 +873,22 @@ static void arg_convert_value(void)
 
 		case SCPI_DT_STRING:
 			if (strlen(pst.charbuf) > SCPI_MAX_STRING_LEN) {
-				scpi_add_error(E_CMD_INVALID_STRING_DATA, "String too long.");
+				scpi_add_error(E_CMD_STRING_DATA_ERROR, "String too long.");
 
 				pst.state = PARS_DISCARD_LINE;
 			} else {
 				strcpy(dest->STRING, pst.charbuf); // copy the string
+			}
+
+			break;
+
+		case SCPI_DT_CHARDATA:
+			if (strlen(pst.charbuf) > SCPI_MAX_STRING_LEN) { // using common buffer
+				scpi_add_error(E_CMD_CHARACTER_DATA_TOO_LONG, NULL);
+
+				pst.state = PARS_DISCARD_LINE;
+			} else {
+				strcpy(dest->CHARDATA, pst.charbuf); // copy the character data text
 			}
 
 			break;
