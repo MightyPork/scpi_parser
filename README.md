@@ -24,7 +24,7 @@ See main.c for example of how to use the library.
 
 - <s>Setting error type flags in the ESR when error is added to queue</s>
 - <s>There may be some bugs in the status registers (not tested much)</s>
-- Character data argument ("string without quotes", enum-like)
+- <s>Character data argument ("string without quotes", enum-like)</s>
 - Number units and metric suffixes (k,M,G,m,u,n)
 - DEF, MIN, MAX, INF, NINF argument values for numbers
 
