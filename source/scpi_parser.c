@@ -73,7 +73,7 @@ static struct {
 	SCPI_argval_t args[SCPI_MAX_PARAM_COUNT];
 	uint8_t arg_i; // next free argument slot index
 
-} pst = {0}; // initialized by all zeros
+} pst = {/*EMPTY*/}; // initialized by all zeros
 
 
 // buffer for error messages
@@ -220,6 +220,7 @@ void scpi_handle_byte(const uint8_t b)
 			if (c == '\r' || c == '\n') {
 				pars_reset_cmd();
 			}
+
 			break;
 
 		case PARS_TRAILING_WHITE:
@@ -510,7 +511,7 @@ static void pars_cmd_newline(void)
 
 	} else {
 		err_no_such_command();
-		pst.state = PARS_DISCARD_LINE;
+		pars_reset_cmd();
 	}
 }
 

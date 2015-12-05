@@ -3,6 +3,8 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
+INCLUDEPATH += source/
+
 SOURCES += \
 	main.c \
 	source/scpi_parser.c \
