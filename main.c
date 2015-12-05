@@ -123,5 +123,5 @@ const SCPI_command_t scpi_commands[] = {
 		.levels = {"USeRERRor"},
 		.callback = cmd_USRERR_cb
 	},
-	{0} // end marker
+	{/*END*/}
 };

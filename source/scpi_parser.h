@@ -57,6 +57,7 @@ typedef struct {
 	void (*blob_callback)(const uint8_t *bytes);
 } SCPI_command_t;
 
+
 // ---------------- USER CONFIG ----------------
 
 // Zero terminated command struct array - must be defined.

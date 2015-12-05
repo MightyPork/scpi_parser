@@ -476,7 +476,7 @@ const SCPI_command_t scpi_commands_builtin[] = {
 		.callback = builtin_STAT_PRES
 	},
 
-	{0} // end marker
+	{/*END*/}
 };
 
 

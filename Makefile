@@ -14,8 +14,6 @@ CFLAGS      += -Wall -Wextra -Wshadow
 CFLAGS      += -Wwrite-strings -Wold-style-definition -Winline
 CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare -Wunused-function
 
-# gcc bug?
-CFLAGS      += -Wno-missing-braces
 
 all: $(SRC) $(HDRS)
 	gcc $(CFLAGS) $(SRC) -o main.elf
