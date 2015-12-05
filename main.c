@@ -2,13 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "scpi_parser.h"
-#include "scpi_errors.h"
-
-
-void cmd_aIDNq_cb(const SCPI_argval_t *args)
-{
-	printf("cb  *IDN?\n");
-}
 
 
 void cmd_APPL_SIN_cb(const SCPI_argval_t *args)
@@ -62,11 +55,6 @@ void cmd_STQE_cb(const SCPI_argval_t *args)
 
 const SCPI_command_t scpi_commands[] = {
 	{
-		.levels = {"*IDN?"},
-		.params = {},
-		.callback = cmd_aIDNq_cb
-	},
-	{
 		.levels = {"APPLy", "SINe"},
 		.params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_SIN_cb
@@ -111,28 +99,51 @@ const SCPI_command_t scpi_commands[] = {
 
 
 
+void scpi_send_byte_impl(uint8_t b)
+{
+	putchar(b);
+}
+
+
+const char *scpi_device_identifier(void)
+{
+	return "FEL CVUT,DDS1,0,0.1";
+}
+
+
+
 int main()
 {
 	char buf[256];
 
+//	SCPI_REG_QUEST.CURR = 1;
+//	SCPI_REG_QUEST_EN.u16 = 0xFFFF;
+
+//	printf("0x%x\n", SCPI_REG_QUEST.u16);
+
+//	scpi_status_update();
+
+
+//	return 0;
+
 
 //	const char *inp = "*IDN?\n";
 //	const char *inp = "FREQ 50\n";
-	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
+//	const char *inp = "DISP:TEXT 'ban\\\\ana', OFF\nDISP:TEXT \"dblquot!\", 1\r\nFREQ 50\r\n";
 
 	//const char *inp = "FOO\nDATA:BLOB 13.456, #216AbcdEfghIjklMnop\nFREQ 50\r\nAPPLY:MOO\n";
 	//const char *inp = "STAT:QUE:ENAB?;ENAB \t   1;ENAB?;:*IDN?\n";
 
-	//const char *inp = "*idn?;foo;apply:sin 5,6,\n";
+	const char *inp = "*idn?\n";
 
 	for (int i = 0; i < strlen(inp); i++) {
 		scpi_handle_byte(inp[i]);
 	}
 
 
-	scpi_error_string(buf, E_EXE_DATA_QUESTIONABLE, "The data smells fishy");
+	//scpi_error_string(buf, E_EXE_DATA_QUESTIONABLE, "The data smells fishy");
 
-	scpi_read_error(buf), printf("%s\n", buf);
+	//scpi_read_error(buf), printf("%s\n", buf);
 
 //	scpi_add_error(E_CMD_BLOCK_DATA_ERROR, NULL);
 

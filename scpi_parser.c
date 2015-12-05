@@ -84,6 +84,8 @@ static struct {
 // buffer for error messages
 static char ebuf[256];
 
+// response buffer
+static char sbuf[256];
 
 // ---------------- PRIVATE PROTOTYPES ------------------
 
@@ -121,20 +123,185 @@ static void pars_reset_cmd_keeplevel(void);
 
 // ---------------- BUILTIN SCPI COMMANDS ------------------
 
-static void builtin_cb_FOO(const SCPI_argval_t *args)
+static void builtin_CLS(const SCPI_argval_t *args)
 {
-	printf("Builtin FOO\n");
+	// clear the registers
+	SCPI_REG_SESR.u8 = 0;
+	SCPI_REG_OPER.u16 = 0;
+	SCPI_REG_QUES.u16 = 0;
+	scpi_clear_errors();
+
+	if (scpi_user_CLS) {
+		scpi_user_CLS();
+	}
+
+	scpi_status_update(); // flags
+}
+
+
+static void builtin_RST(const SCPI_argval_t *args)
+{
+	if (scpi_user_RST) {
+		scpi_user_RST();
+	}
+}
+
+
+static void builtin_TSTq(const SCPI_argval_t *args)
+{
+	if (scpi_user_TSTq) {
+		scpi_user_TSTq();
+	}
+}
+
+
+static void builtin_IDNq(const SCPI_argval_t *args)
+{
+	scpi_send_string(scpi_device_identifier());
+}
+
+
+static void builtin_ESE(const SCPI_argval_t *args)
+{
+	SCPI_REG_SESR_EN.u8 = (uint8_t) args[0].INT;
+}
+
+
+static void builtin_ESEq(const SCPI_argval_t *args)
+{
+	sprintf(sbuf, "%d", SCPI_REG_SESR_EN.u8);
+	scpi_send_string(ebuf);
+}
+
+
+static void builtin_ESRq(const SCPI_argval_t *args)
+{
+	sprintf(sbuf, "%d", SCPI_REG_SESR.u8);
+	scpi_send_string(ebuf);
+}
+
+
+static void builtin_OPC(const SCPI_argval_t *args)
+{
+	// implementation for instruments with no overlapping commands.
+	// Can be overridden in the user commands.
+	SCPI_REG_SESR.OPC = 1;
+}
+
+
+static void builtin_OPCq(const SCPI_argval_t *args)
+{
+	// implementation for instruments with no overlapping commands.
+	// Can be overridden in the user commands.
+	// (would be): sprintf(sbuf, "%d", SCPI_REG_SESR.OPC);
+
+	scpi_send_string("1");
+}
+
+
+static void builtin_SRE(const SCPI_argval_t *args)
+{
+	SCPI_REG_SRE.u8 = (uint8_t) args[0].INT;
+}
+
+
+static void builtin_SREq(const SCPI_argval_t *args)
+{
+	sprintf(sbuf, "%d", SCPI_REG_SRE.u8);
+	scpi_send_string(ebuf);
+}
+
+
+static void builtin_STBq(const SCPI_argval_t *args)
+{
+	sprintf(sbuf, "%d", SCPI_REG_STB.u8);
+	scpi_send_string(ebuf);
+}
+
+
+static void builtin_WAI(const SCPI_argval_t *args)
+{
+	// no-op
 }
 
 
 static const SCPI_command_t scpi_commands_builtin[] = {
+	// ---- COMMON COMMANDS ----
 	{
-		.levels = {"FOO"},
-		.params = {},
-		.callback = builtin_cb_FOO
+		.levels = {"*CLS"},
+		.callback = builtin_CLS
 	},
+	{
+		.levels = {"*ESE"},
+		.params = {SCPI_DT_INT},
+		.callback = builtin_ESE
+	},
+	{
+		.levels = {"*ESE?"},
+		.callback = builtin_ESEq
+	},
+	{
+		.levels = {"*ESR?"},
+		.callback = builtin_ESRq
+	},
+	{
+		.levels = {"*IDN?"},
+		.callback = builtin_IDNq
+	},
+	{
+		.levels = {"*OPC"},
+		.callback = builtin_OPC
+	},
+	{
+		.levels = {"*OPCq"},
+		.callback = builtin_OPCq
+	},
+	{
+		.levels = {"*RST"},
+		.callback = builtin_RST
+	},
+	{
+		.levels = {"*SRE"},
+		.params = {SCPI_DT_INT},
+		.callback = builtin_SRE
+	},
+	{
+		.levels = {"*SRE?"},
+		.callback = builtin_SREq
+	},
+	{
+		.levels = {"*STB?"},
+		.callback = builtin_STBq
+	},
+	{
+		.levels = {"*WAI"},
+		.callback = builtin_WAI
+	},
+	{
+		.levels = {"*TST?"},
+		.callback = builtin_TSTq
+	},
+	// ---- REQUIRED SYST COMMANDS ----
+
+
 	{0} // end marker
 };
+
+
+
+// ------------------- MESSAGE SEND ------------------
+
+/** Send a message to master. Trailing newline is added. */
+void scpi_send_string(const char *message)
+{
+	char c;
+	while ((c = *message++) != 0) {
+		scpi_send_byte_impl(c);
+	}
+
+	scpi_send_byte_impl('\r');
+	scpi_send_byte_impl('\n');
+}
 
 
 
@@ -163,6 +330,8 @@ void scpi_add_error(SCPI_error_t errno, const char *extra)
 	if (pst.err_queue_w >= ERR_QUEUE_LEN) {
 		pst.err_queue_w = 0;
 	}
+
+	scpi_status_update();
 }
 
 
@@ -179,6 +348,18 @@ void scpi_read_error(char *buf)
 	if (pst.err_queue_r >= ERR_QUEUE_LEN) {
 		pst.err_queue_r = 0;
 	}
+
+	scpi_status_update();
+}
+
+
+void scpi_clear_errors(void)
+{
+	pst.err_queue_r = 0;
+	pst.err_queue_w = 0;
+	pst.err_queue_used = 0;
+
+	scpi_status_update();
 }
 
 
@@ -186,6 +367,7 @@ uint8_t scpi_error_count(void)
 {
 	return pst.err_queue_used;
 }
+
 
 static void err_no_such_command()
 {

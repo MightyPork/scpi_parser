@@ -1,8 +1,9 @@
 #pragma once
-#include "scpi_errors.h"
-
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "scpi_errors.h"
+#include "scpi_regs.h"
 
 #define SCPI_MAX_CMD_LEN 12
 #define SCPI_MAX_STRING_LEN 12
@@ -55,9 +56,26 @@ typedef struct {
 	void (*blob_callback)(const uint8_t *bytes);
 } SCPI_command_t;
 
+// ---------------- USER CONFIG ----------------
 
 // Zero terminated command struct array - must be defined.
 extern const SCPI_command_t scpi_commands[];
+
+/** Send a byte to master (may be buffered) */
+extern void scpi_send_byte_impl(uint8_t b);
+
+/** *CLS command callback - clear non-SCPI device state */
+extern __attribute__((weak)) void scpi_user_CLS(void);
+
+/** *RST command callback - reset non-SCPI device state */
+extern __attribute__((weak)) void scpi_user_RST(void);
+
+/** *TST? command callback - perform self test and send response back. */
+extern __attribute__((weak)) void scpi_user_TSTq(void);
+
+/** Get device identifier. Implemented as a callback to allow dynamic serial number */
+extern const char *scpi_device_identifier(void);
+
 
 
 // --------------- functions --------------------
@@ -84,3 +102,10 @@ void scpi_read_error(char *buf);
 
 /** Discard the rest of the currently processed blob */
 void scpi_discard_blob(void);
+
+/** Send a string to master. \r\n is added. */
+void scpi_send_string(const char *message);
+
+/** Clear the error queue */
+void scpi_clear_errors(void);
+
