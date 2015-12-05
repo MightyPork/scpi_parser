@@ -97,6 +97,9 @@ void scpi_discard_blob(void);
 /** Send a string to master. \r\n is added. */
 void scpi_send_string(const char *message);
 
+/** Send a string without a line terminator */
+void scpi_send_string_raw(const char *message);
+
 /** Clear the error queue */
 void scpi_clear_errors(void);
 

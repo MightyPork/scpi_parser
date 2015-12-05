@@ -123,6 +123,74 @@ static void builtin_SYST_ERR_NEXTq(const SCPI_argval_t *args)
 }
 
 
+// optional
+static void builtin_SYST_ERR_ALLq(const SCPI_argval_t *args)
+{
+	int cnt = 0;
+	while (scpi_error_count()) {
+		scpi_read_error(sbuf);
+		if (cnt++ > 0) scpi_send_string_raw(",");
+		scpi_send_string_raw(sbuf);
+	}
+
+	scpi_send_string_raw("\r\n"); // eol
+}
+
+
+static void builtin_SYST_ERR_CODE_NEXTq(const SCPI_argval_t *args)
+{
+	scpi_read_error(sbuf);
+
+	// end at comma
+	for (int i = 0; i < 256; i++) {
+		if (sbuf[i] == ',') {
+			sbuf[i] = 0;
+			break;
+		}
+	}
+
+	scpi_send_string(sbuf);
+}
+
+
+// optional
+static void builtin_SYST_ERR_CODE_ALLq(const SCPI_argval_t *args)
+{
+	int cnt = 0;
+	while (scpi_error_count()) {
+		scpi_read_error(sbuf);
+		if (cnt++ > 0) scpi_send_string_raw(",");
+
+		// end at comma
+		for (int i = 0; i < 256; i++) {
+			if (sbuf[i] == ',') {
+				sbuf[i] = 0;
+				break;
+			}
+		}
+
+		scpi_send_string_raw(sbuf);
+	}
+
+	scpi_send_string_raw("\r\n"); // eol
+}
+
+
+// optional
+static void builtin_SYST_ERR_COUNq(const SCPI_argval_t *args)
+{
+	sprintf(sbuf, "%d", scpi_error_count());
+	scpi_send_string(sbuf);
+}
+
+
+// optional, custom
+static void builtin_SYST_ERR_CLEAR(const SCPI_argval_t *args)
+{
+	scpi_clear_errors();
+}
+
+
 static void builtin_SYST_VERSq(const SCPI_argval_t *args)
 {
 	scpi_send_string(scpi_device_version());
@@ -269,6 +337,30 @@ const SCPI_command_t scpi_commands_builtin[] = {
 	{
 		.levels = {"SYSTem", "ERRor", "NEXT?"},
 		.callback = builtin_SYST_ERR_NEXTq
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "ALL?"}, // optional
+		.callback = builtin_SYST_ERR_ALLq
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "CLEAR"}, // custom, added for convenience
+		.callback = builtin_SYST_ERR_CLEAR
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "COUNt?"}, // optional
+		.callback = builtin_SYST_ERR_COUNq
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "CODE?"}, // optional
+		.callback = builtin_SYST_ERR_CODE_NEXTq
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "CODE", "NEXT?"}, // optional
+		.callback = builtin_SYST_ERR_CODE_NEXTq
+	},
+	{
+		.levels = {"SYSTem", "ERRor", "CODE", "ALL?"}, // optional
+		.callback = builtin_SYST_ERR_CODE_ALLq
 	},
 	{
 		.levels = {"SYSTem", "VERSion?"},
