@@ -43,7 +43,7 @@ all: lib
 lib: lib/lib$(LIBNAME).a
 
 lib/lib$(LIBNAME).a: $(OBJS)
-	$(Q)$(AR) rcs $< $(OBJS)
+	$(Q)$(AR) rcs $@ $(OBJS)
 
 clean:
 	$(Q)$(RM) $(JUNK)
