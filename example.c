@@ -105,7 +105,7 @@ void cmd_USRERR_cb(const SCPI_argval_t *args)
 
 void cmd_CHARD_cb(const SCPI_argval_t *args)
 {
-	printf("CHARData cb: %s, arg2 = %d", args[0].CHARDATA, args[1].INT);
+	printf("CHARData cb: %s, arg2 = %d\n", args[0].CHARDATA, args[1].INT);
 }
 
 

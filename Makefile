@@ -1,4 +1,4 @@
-SRC = main.c
+SRC = example.c
 SRC+= source/scpi_parser.c
 SRC+= source/scpi_regs.c
 SRC+= source/scpi_builtins.c
@@ -16,14 +16,12 @@ CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare -Wunused-function
 
 
 all: $(SRC) $(HDRS)
-	gcc $(CFLAGS) $(SRC) -o main.elf
+	gcc $(CFLAGS) $(SRC) -o example.elf
 
 run: all
-	./main.elf
+	./example.elf
 
 clean:
 	rm -f *.o *.d *.so *.elf *.bin *.hex
 	cd source
 	rm -f *.o *.d *.so *.elf *.bin *.hex
-
-
