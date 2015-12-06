@@ -1,27 +1,54 @@
-SRC = example.c
-SRC+= source/scpi_parser.c
-SRC+= source/scpi_regs.c
-SRC+= source/scpi_builtins.c
-SRC+= source/scpi_errors.c
+###############################################################################
 
-HDRS= source/scpi_parser.h
-HDRS+= source/scpi_regs.h
-HDRS+= source/scpi_builtins.h
-HDRS+= source/scpi_errors.h
+# Makefile to build a library for ARM CortexM3
 
-CFLAGS      += -std=gnu99
+FP_FLAGS      = -mfloat-abi=hard -mfpu=fpv4-sp-d16
+ARCH_FLAGS    = -mthumb -mcpu=cortex-m4 $(FP_FLAGS)
+
+INCL_DIR      = include
+SRC_DIR       = source
+
+LIBNAME       = arm_cortexM4_scpi
+
+OBJS          = $(SRC_DIR)/scpi_parser.o
+OBJS         += $(SRC_DIR)/scpi_regs.o
+OBJS         += $(SRC_DIR)/scpi_errors.o
+OBJS         += $(SRC_DIR)/scpi_builtins.o
+
+JUNK          = *.o *.d *.elf *.bin *.hex *.srec *.list *.map *.dis *.disasm *.a
+
+###############################################################################
+
+PREFIX  ?= arm-none-eabi
+
+CC      := $(PREFIX)-gcc
+AR      := $(PREFIX)-ar
+
+###############################################################################
+
+CFLAGS      += -Os -ggdb -std=gnu99 -Wfatal-errors
 CFLAGS      += -Wall -Wextra -Wshadow
-CFLAGS      += -Wwrite-strings -Wold-style-definition -Winline
-CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare -Wunused-function
+CFLAGS      += -Wwrite-strings -Wold-style-definition -Winline -Wmissing-noreturn -Wstrict-prototypes
+CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare
+CFLAGS      += -fno-common -ffunction-sections -fdata-sections -Wunused-function
+CFLAGS      += -I$(INCL_DIR)
 
+###############################################################################
 
-all: $(SRC) $(HDRS)
-	gcc $(CFLAGS) $(SRC) -o example.elf
+all: lib
 
-run: all
-	./example.elf
+%.o: %.c
+	$(Q)$(CC) $(CFLAGS) $(ARCH_FLAGS) -o $(*).o -c $(*).c
+
+lib: lib/lib$(LIBNAME).a
+
+lib/lib$(LIBNAME).a: $(OBJS)
+	$(Q)$(AR) rcs $@ $(OBJS)
 
 clean:
-	rm -f *.o *.d *.so *.elf *.bin *.hex
-	cd source
-	rm -f *.o *.d *.so *.elf *.bin *.hex
+	$(Q)$(RM) $(JUNK)
+	$(Q)cd source && $(RM) $(JUNK)
+	$(Q)cd lib && $(RM) $(JUNK)
+	$(Q)cd example && $(RM) $(JUNK)
+
+.PHONY: clean all lib

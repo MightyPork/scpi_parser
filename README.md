@@ -20,7 +20,11 @@ Built-in commands can be overriden in user command array.
 
 ## How to use
 
-See main.c for example of how to use the library.
+To test it with regular gcc, run the Makefile in the `example` directory.
+
+The main Makefile builds a library for ARM Cortex M4 (can be easily adjusted for others).
+
+### Stubs to implement
 
 Here's an overview of stubs you have to implement (at the time of writing this readme):
 
