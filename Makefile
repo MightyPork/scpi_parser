@@ -49,5 +49,6 @@ clean:
 	$(Q)$(RM) $(JUNK)
 	$(Q)cd source && $(RM) $(JUNK)
 	$(Q)cd lib && $(RM) $(JUNK)
+	$(Q)cd example && $(RM) $(JUNK)
 
 .PHONY: clean all lib
