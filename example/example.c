@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "scpi_parser.h"
+#include "scpi.h"
 
 // ------- TESTING ----------
 

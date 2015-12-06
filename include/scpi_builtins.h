@@ -2,11 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "scpi_parser.h"
-#include "scpi_errors.h"
-#include "scpi_regs.h"
-
-
 /** *CLS command callback - clear non-SCPI device state */
 extern __attribute__((weak)) void scpi_user_CLS(void);
 

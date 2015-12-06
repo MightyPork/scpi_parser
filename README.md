@@ -4,21 +4,39 @@ This library provides a simple ("KISS") SCPI implementation for embedded devices
 
 The implementation is not 100% complete, but it's sufficient for basic SCPI communication.
 
-## What's supported
+- Easy configuration with one const array and callbacks
+- Implements SCPI99 (minimal requirements) - including common commands and status registers
+- Mandatory parts of the SYST and STAT subsystems are built in (ie. error handling)
+- Easy, straightforward API
 
-- The hierarchical header model (commands with colon)
-- Long and short header variants (eg. `SYSTem?`)
-- Easy configuration with one const array of structs and callback functions (see `main.c`)
+## Feature overview
+
+### What's supported
+
+- Commands with colon (hierarchical header model)
 - Semicolon for chaining commands on the same level
-- String, Int, Float, Bool arguments
-- Block data argument with callback each N received bytes (configurable)
-- Status Register model
-- Error queue including error messages from the SCPI spec
-- All mandatory SCPI commands (headers) are implemented as built-ins
+- Long and short command variants (eg. `SYSTem?`)
+- String, Int, Float, Bool, CharData arguments
+- **Block data argument** with callback each N received bytes - allows virtually unlimite binary data length
+- Status Registers
+- Error queue with error numbers and messages (and the required SYST:ERR subsystem)
 
-Built-in commands can be overriden in user command array.
+Built-in commands can be overriden by matching user commands.
 
-## How to use
+### Limitations
+
+- Binary block must be the last argument of a command (callback is run after reading the binary block preamble)
+
+### What's missing
+
+- Number units (mV,V,kW,A,Ohm) and metric suffixes (k,M,G,m,u,n)
+- DEF, MIN, MAX, INF, NINF argument values for numbers
+- Numbered virtual instruments (DAC1:OUT, DAC2:OUT) - currently you need to define the commands twice
+
+Feel free to propose a pull request implementing any missing features.
+
+
+## How to use it
 
 To test it with regular gcc, run the Makefile in the `example` directory.
 
@@ -29,7 +47,7 @@ The main Makefile builds a library for ARM Cortex M4 (can be easily adjusted for
 Here's an overview of stubs you have to implement (at the time of writing this readme):
 
 ```c
-#include "scpi_parser.h"
+#include "scpi.h"
 
 // Receive byte - call:
 //   scpi_handle_byte()
@@ -93,12 +111,3 @@ void scpi_user_TSTq(void) { /*...*/ }
 ```
 
 See the header files for more info.
-
-## What is missing
-
-- Number units and metric suffixes (k,M,G,m,u,n)
-- DEF, MIN, MAX, INF, NINF argument values for numbers
-
-Support for units and "constants" (DEF etc) in numeric fields will need some larger changes to the numeric parser and `SCPI_argval_t`.
-
-Feel free to propose a pull request implementing any missing features.

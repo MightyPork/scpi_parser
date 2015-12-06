@@ -3,14 +3,16 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-INCLUDEPATH += source/
+INCLUDEPATH += source/ \
+	include/
 
 SOURCES += \
 	main.c \
 	source/scpi_parser.c \
 	source/scpi_errors.c \
 	source/scpi_regs.c \
-	source/scpi_builtins.c
+	source/scpi_builtins.c \
+	example/example.c
 
 DISTFILES += \
 	style.astylerc \
@@ -23,4 +25,9 @@ HEADERS += \
 	source/scpi_parser.h \
 	source/scpi_errors.h \
 	source/scpi_regs.h \
-	source/scpi_builtins.h
+	source/scpi_builtins.h \
+	include/scpi_builtins.h \
+	include/scpi_errors.h \
+	include/scpi_parser.h \
+	include/scpi_regs.h \
+    include/scpi.h

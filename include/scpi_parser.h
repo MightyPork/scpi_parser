@@ -2,10 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "scpi_errors.h"
-#include "scpi_builtins.h"
-#include "scpi_regs.h"
-
 #define SCPI_MAX_CMD_LEN 16 // 12 according to spec
 #define SCPI_MAX_STRING_LEN 64 // 12 according to spec
 #define SCPI_MAX_LEVEL_COUNT 4
