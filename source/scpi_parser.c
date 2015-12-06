@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "scpi_parser.h"
 #include "scpi_errors.h"
@@ -61,8 +62,8 @@ static struct {
 	char charbuf[MAX_CHARBUF_LEN + 1];
 	uint16_t charbuf_i;
 
-	int32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
-	int32_t blob_len; // total blob length to read
+	uint32_t blob_cnt; // preamble counter, if 0, was just #, must read count. Used also for blob body.
+	uint32_t blob_len; // total blob length to read
 
 	char string_quote; // symbol used to quote string
 	bool string_escape; // last char was backslash, next quote is literal
@@ -861,7 +862,7 @@ static void arg_convert_value(void)
 			break;
 
 		case SCPI_DT_INT:
-			j = sscanf(pst.charbuf, "%d", &dest->INT);
+			j = sscanf(pst.charbuf, "%" SCNu32, &dest->INT);
 
 			if (j == 0 || pst.charbuf[0] == '\0') { //fail or empty buffer
 				sprintf(ebuf, "Invalid INT value: '%s'", pst.charbuf);
@@ -937,7 +938,7 @@ static void pars_blob_preamble_char(uint8_t c)
 			// end of preamble sequence
 			charbuf_terminate();
 
-			sscanf(pst.charbuf, "%d", &pst.blob_len);
+			sscanf(pst.charbuf, "%" SCNu32, &pst.blob_len);
 
 			pst.args[pst.arg_i].BLOB_LEN = pst.blob_len;
 			run_command_callback();

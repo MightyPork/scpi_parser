@@ -32,3 +32,4 @@
 *.dSYM/
 
 *.autosave
+*.pro.user
