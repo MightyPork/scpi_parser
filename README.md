@@ -27,9 +27,16 @@ Here's an overview of stubs you have to implement (at the time of writingthis re
 ```c
 #include "scpi_parser.h"
 
+// Receive byte - call:
+//   scpi_handle_byte()
+//   scpi_handle_string()
+
+
+// ---- DEVICE IMPLEMENTATION ----
+
 const SCPI_error_desc scpi_user_errors[] = {
-	{10, "Custom error"}, // add your custom errors here
-	{/*END*/}
+	{10, "Custom error"}, // add your custom errors here (positive numbers)
+	{/*END*/} // <-- end marker
 };
 
 
@@ -46,25 +53,14 @@ const char *scpi_device_identifier(void)
 	return "<manufacturer>,<product>,<serial#>,<version>";
 }
 
-/* OPTIONAL callback */
-void scpi_service_request_impl(void)
-{
-	// called when the SRQ flag in Status Byte is set.
-	// device should somehow send the request to master
-	// (can be left unimplemented)
-}
 
 /* Custom commands */
 const SCPI_command_t scpi_commands[] = {
+	// see the struct definition for more details. Examples:
 	{
 		.levels = {"APPLy", "SINe"},
 		.params = {SCPI_DT_INT, SCPI_DT_FLOAT, SCPI_DT_FLOAT},
 		.callback = cmd_APPL_SIN_cb
-	},
-	{
-		.levels = {"DISPlay", "TEXT"},
-		.params = {SCPI_DT_STRING},
-		.callback = cmd_DISP_TEXT_cb // <-- your callback function
 	},
 	{
 		.levels = {"DATA", "BLOB"},
@@ -73,12 +69,26 @@ const SCPI_command_t scpi_commands[] = {
 		.blob_chunk = 4,
 		.blob_callback = cmd_DATA_BLOB_data // <-- data callback
 	},
-	{/*END*/}
+	{/*END*/} // <-- important! Marks end of the array
 };
 
-// See the header files for more info.
+// ---- OPTIONAL CALLBACKS ----
+
+void scpi_service_request_impl(void)
+{
+	// Called when the SRQ flag in Status Byte is set.
+	// Device should somehow send the request to master.
+}
+
+// Device specific implementation of common commands
+// (status registers etc are handled internally)
+void scpi_user_CLS(void) { /*...*/ }
+void scpi_user_RST(void) { /*...*/ }
+void scpi_user_TSTq(void) { /*...*/ }
 
 ```
+
+See the header files for more info.
 
 ## What is missing
 
