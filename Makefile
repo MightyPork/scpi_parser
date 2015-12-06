@@ -5,18 +5,17 @@
 FP_FLAGS      = -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ARCH_FLAGS    = -mthumb -mcpu=cortex-m4 $(FP_FLAGS)
 
-INCL_DIR   = include
-SRC_DIR     = source
+INCL_DIR      = include
+SRC_DIR       = source
 
-LIBNAME     = arm_cortexM4_scpi
+LIBNAME       = arm_cortexM4_scpi
 
-#OBJS        += $(SRC_DIR)/opamp.o
-OBJS        = $(SRC_DIR)/scpi_parser.o
-OBJS        += $(SRC_DIR)/scpi_regs.o
-OBJS        += $(SRC_DIR)/scpi_errors.o
-OBJS        += $(SRC_DIR)/scpi_builtins.o
+OBJS          = $(SRC_DIR)/scpi_parser.o
+OBJS         += $(SRC_DIR)/scpi_regs.o
+OBJS         += $(SRC_DIR)/scpi_errors.o
+OBJS         += $(SRC_DIR)/scpi_builtins.o
 
-JUNK            = *.o *.d *.elf *.bin *.hex *.srec *.list *.map *.dis *.disasm *.a
+JUNK          = *.o *.d *.elf *.bin *.hex *.srec *.list *.map *.dis *.disasm *.a
 
 ###############################################################################
 
