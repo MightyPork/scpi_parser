@@ -22,7 +22,7 @@ Built-in commands can be overriden in user command array.
 
 See main.c for example of how to use the library.
 
-Here's an overview of stubs you have to implement (at the time of writingthis readme):
+Here's an overview of stubs you have to implement (at the time of writing this readme):
 
 ```c
 #include "scpi_parser.h"
