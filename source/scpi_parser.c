@@ -134,9 +134,7 @@ void scpi_send_string_raw(const char *message)
 void scpi_send_string(const char *message)
 {
 	scpi_send_string_raw(message);
-
-	scpi_send_byte_impl('\r');
-	scpi_send_byte_impl('\n');
+	scpi_send_string_raw(scpi_eol);
 }
 
 // ------- Error shortcuts ----------

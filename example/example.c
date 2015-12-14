@@ -37,6 +37,9 @@ int main(void)
 
 // ---- Test device impl ----
 
+// Newline sequence for responses.
+// Device accepts botn \r\n and \n in incomming messages.
+const char *scpi_eol = "\r\n";
 
 const SCPI_error_desc scpi_user_errors[] = {
 	{10, "Custom error"},

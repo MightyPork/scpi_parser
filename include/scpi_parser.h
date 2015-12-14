@@ -70,6 +70,9 @@ extern const SCPI_command_t scpi_commands_builtin[];
 /** Send a byte to master (may be buffered) */
 extern void scpi_send_byte_impl(uint8_t b);
 
+/** Character sequence used as a newline in responses. */
+extern const char *scpi_eol;
+
 
 // --------------- functions --------------------
 

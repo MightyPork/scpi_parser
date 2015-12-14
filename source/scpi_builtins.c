@@ -165,7 +165,7 @@ static void builtin_SYST_ERR_ALLq(const SCPI_argval_t *args)
 		scpi_send_string_raw(sbuf);
 	}
 
-	scpi_send_string_raw("\r\n"); // eol
+	scpi_send_string_raw(scpi_eol);
 }
 
 
@@ -208,7 +208,7 @@ static void builtin_SYST_ERR_CODE_ALLq(const SCPI_argval_t *args)
 		scpi_send_string_raw(sbuf);
 	}
 
-	scpi_send_string_raw("\r\n"); // eol
+	scpi_send_string_raw(scpi_eol);
 }
 
 
