@@ -158,14 +158,18 @@ static void builtin_SYST_ERR_ALLq(const SCPI_argval_t *args)
 {
 	(void)args;
 
-	int cnt = 0;
-	while (scpi_error_count()) {
-		scpi_read_error(sbuf);
-		if (cnt++ > 0) scpi_send_string_raw(",");
-		scpi_send_string_raw(sbuf);
+	if (scpi_error_count()) {
+		int cnt = 0;
+		while (scpi_error_count()) {
+			scpi_read_error(sbuf);
+			if (cnt++ > 0) scpi_send_string_raw(",");
+			scpi_send_string_raw(sbuf);
+			scpi_send_string_raw(scpi_eol);
+		}
+	} else {
+		scpi_read_error(sbuf); // O,"No error"
+		scpi_send_string(sbuf);
 	}
-
-	scpi_send_string_raw(scpi_eol);
 }
 
 

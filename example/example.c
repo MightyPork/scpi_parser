@@ -32,6 +32,9 @@ int main(void)
 
 	// test chardata
 	send_cmd("CHARD FOOBAR123_MOO_abcdef_HELLO, 12\n");
+	
+	
+	send_cmd("SYST:ERR:ALL?\n");
 }
 
 
