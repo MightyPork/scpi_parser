@@ -362,7 +362,7 @@ const SCPI_command_t scpi_commands_builtin[] = {
 		.callback = builtin_OPC
 	},
 	{
-		.levels = {"*OPCq"},
+		.levels = {"*OPC?"},
 		.callback = builtin_OPCq
 	},
 	{
