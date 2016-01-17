@@ -11,9 +11,14 @@ typedef struct {
 extern const SCPI_error_desc scpi_user_errors[];
 
 
-/** Callback when error is added to the queue */
+/**
+ * Callback when error is added to the queue
+ *
+ * @param errno error code
+ * @param msg error string in the canonical format <code>,<message>
+ */
 extern __attribute__((weak))
-void scpi_user_error(int16_t errno, const char * msg);
+void scpi_user_error(int16_t errno, const char * error_string);
 
 
 // SCPI error constants
