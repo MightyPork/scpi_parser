@@ -791,12 +791,12 @@ static void pars_arg_eol_do(bool keep_levels)
 {
 	int req_cnt = cmd_param_count(pst.matched_cmd);
 
-	if (pst.arg_i < req_cnt) {
+	if (pst.arg_i + (pst.charbuf_i ? 1 : 0) < req_cnt) {
 		// not the last arg yet - fail
 
 		if (pst.charbuf_i > 0) pst.arg_i++; // acknowledge the last arg
 
-		sprintf(ebuf, "Required %d, got %d.", req_cnt, pst.arg_i);
+		sprintf(ebuf, "Required %d arg, got %d.", req_cnt, pst.arg_i);
 		scpi_add_error(E_CMD_MISSING_PARAMETER, ebuf);
 
 		pst.state = PARS_DISCARD_LINE;

@@ -35,6 +35,7 @@ int main(void)
 	// test chardata
 	send_cmd("CHARD FOOBAR123_MOO_abcdef_HELLO, 12\n");
 
+	send_cmd("SINGLE_STR_ARG \n");
 
 	send_cmd("SYST:ERR:ALL?\n");
 }
@@ -132,6 +133,13 @@ void cmd_ERROR_FALLBACK_cb(const SCPI_argval_t *args)
 }
 
 
+void cmd_SINGLE_STR_ARG_cb(const SCPI_argval_t *args)
+{
+	(void) args;
+
+	printf("Single str arg = %s", args[0].STRING);
+}
+
 // Command definition (mandatory commands are built-in)
 const SCPI_command_t scpi_commands[] = {
 	{
@@ -158,6 +166,11 @@ const SCPI_command_t scpi_commands[] = {
 	{
 		.levels = {"ERROR_FALLBACK"},
 		.callback = cmd_ERROR_FALLBACK_cb
+	},
+	{
+		.levels = {"SINGLE_STR_ARG"},
+		.params = {SCPI_DT_STRING},
+		.callback = cmd_SINGLE_STR_ARG_cb
 	},
 	{
 		.levels = {"CHARData"},

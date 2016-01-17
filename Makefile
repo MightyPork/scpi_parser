@@ -34,7 +34,7 @@ CFLAGS      += -fno-common -ffunction-sections -fdata-sections -Wunused-function
 CFLAGS      += -I$(INCL_DIR)
 
 CFLAGS += -DSCPI_FINE_ERRORS
-CFLAGS += -DSCPI_WEIRD_ERRORS
+#CFLAGS += -DSCPI_WEIRD_ERRORS
 
 ###############################################################################
 
