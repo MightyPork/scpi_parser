@@ -12,7 +12,7 @@
 #include "scpi_regs.h"
 
 // Config
-#define MAX_CHARBUF_LEN 255
+#define MAX_CHARBUF_LEN 64
 
 
 // Char matching
@@ -39,7 +39,7 @@
 
 
 /** Parser internal state enum */
-typedef enum {
+typedef enum ParserStateEnum {
 	PARS_COMMAND = 0,
 	// collect generic arg, terminated with comma or newline. Leading and trailing whitespace ignored.
 	PARS_ARG, // generic argument (bool, float...)
@@ -55,7 +55,7 @@ typedef enum {
 
 
 /** Parser internal state struct */
-static struct {
+static struct ParserInternalStateStruct {
 	parser_state_t state; // current parser internal state
 
 	// string buffer, chars collected here until recognized
@@ -608,7 +608,10 @@ static bool level_str_matches(const char *test, const char *pattern)
 }
 
 
-
+/**
+ * Match content of the charbuf to a command.
+ * @param partial - match also parts of a command (until a colon)
+ */
 static bool match_cmd(bool partial)
 {
 	charbuf_terminate(); // zero-end and rewind index
@@ -788,7 +791,7 @@ static void pars_arg_eol_do(bool keep_levels)
 {
 	int req_cnt = cmd_param_count(pst.matched_cmd);
 
-	if (pst.arg_i < req_cnt - 1) {
+	if (pst.arg_i < req_cnt) {
 		// not the last arg yet - fail
 
 		if (pst.charbuf_i > 0) pst.arg_i++; // acknowledge the last arg

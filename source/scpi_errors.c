@@ -8,7 +8,7 @@
 #include "scpi_regs.h"
 
 #define ERR_QUEUE_LEN 4
-#define MAX_ERROR_LEN 255
+#define MAX_ERROR_LEN 150
 
 // --- queue impl ---
 
