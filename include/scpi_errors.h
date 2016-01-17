@@ -10,6 +10,12 @@ typedef struct {
 /** User error definitions */
 extern const SCPI_error_desc scpi_user_errors[];
 
+
+/** Callback when error is added to the queue */
+extern __attribute__((weak))
+void scpi_user_error(int16_t errno, const char * msg);
+
+
 // SCPI error constants
 enum {
 	E_NO_ERROR = 0,
@@ -137,17 +143,18 @@ enum {
 };
 
 
-/** Get SCPI error message (alone) */
-const char *scpi_error_message(int16_t errno);
-
 
 /**
- * Get SCPI error string for reporting:
+ * Get SCPI error string:
  * <code>,"<message>[; <extra>]"
  *
- * extra can be NULL to skip the optional part.
+ * @param buffer Buffer for storing the final string. Make sure it's big enough.
+ * @param errno Error number
+ * @param extra Extra information, appended after the generic message. Can be NULL.
+ *
+ * @returns actual error code. Code may be coerced to closest defined code (categories: tens, hundreds)
  */
-void scpi_error_string(char *buffer, int16_t errno, const char *extra);
+int16_t scpi_error_string(char *buffer, int16_t errno, const char *extra);
 
 
 /** Add error to the error queue */

@@ -30,10 +30,12 @@ int main(void)
 	send_cmd("SYST:ERR:COUNT?\n");
 	send_cmd("SYST:ERR:NEXT?\n");
 
+	send_cmd("ERROR_FALLBACK\n"); // test fallback to closest related error
+
 	// test chardata
 	send_cmd("CHARD FOOBAR123_MOO_abcdef_HELLO, 12\n");
-	
-	
+
+
 	send_cmd("SYST:ERR:ALL?\n");
 }
 
@@ -56,20 +58,25 @@ void scpi_send_byte_impl(uint8_t b)
 }
 
 
-const char *scpi_device_identifier(void)
+const char *scpi_user_IDN(void)
 {
-	return "FEL CVUT,DDS1,0,0.1";
+	return "MightyPork,Test SCPI device,0,0.1";
 }
 
 
-void scpi_service_request_impl(void)
+/** Error callback */
+void scpi_user_error(int16_t errno, const char * msg)
+{
+	printf("### ERROR ADDED: %d, %s ###\n", errno, msg);
+}
+
+
+/** Service request impl */
+void scpi_user_SRQ(void)
 {
 	// NOTE: Actual instrument should send SRQ event somehow
 
-	printf("[SRQ] - error: ");
-	char buf[256];
-	scpi_read_error_noremove(buf); // show error message (for debug)
-	printf("%s\n", buf);
+	printf("[Service Request]\n");
 }
 
 
@@ -115,6 +122,16 @@ void cmd_CHARD_cb(const SCPI_argval_t *args)
 }
 
 
+void cmd_ERROR_FALLBACK_cb(const SCPI_argval_t *args)
+{
+	(void) args;
+
+	printf("Testing the error fallback feature...\n");
+
+	scpi_add_error(-427, NULL);
+}
+
+
 // Command definition (mandatory commands are built-in)
 const SCPI_command_t scpi_commands[] = {
 	{
@@ -137,6 +154,10 @@ const SCPI_command_t scpi_commands[] = {
 	{
 		.levels = {"USeRERRor"},
 		.callback = cmd_USRERR_cb
+	},
+	{
+		.levels = {"ERROR_FALLBACK"},
+		.callback = cmd_ERROR_FALLBACK_cb
 	},
 	{
 		.levels = {"CHARData"},

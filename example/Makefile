@@ -11,10 +11,12 @@ CFLAGS      += -Wall -Wextra -Wshadow
 CFLAGS      += -Wwrite-strings -Wold-style-definition -Winline
 CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare -Wunused-function
 
+CFLAGS += -DSCPI_FINE_ERRORS
+
 CC = gcc
 
 %.o: %.c
-	
+
 
 all: example.elf
 

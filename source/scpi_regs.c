@@ -35,8 +35,8 @@ void scpi_status_update(void)
 
 	// Run service request callback
 	if (SCPI_REG_STB.RQS) {
-		if (scpi_service_request_impl) {
-			scpi_service_request_impl();
+		if (scpi_user_SRQ) {
+			scpi_user_SRQ();
 		}
 	}
 }

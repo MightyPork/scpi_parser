@@ -99,6 +99,16 @@ extern SCPI_REG_STB_t SCPI_REG_STB;
 extern SCPI_REG_STB_t SCPI_REG_SRE; // SRE
 
 
+/** Update the status registers (perform propagation) */
 void scpi_status_update(void);
 
-extern __attribute__((weak)) void scpi_service_request_impl(void);
+
+/**
+ * Service Request callback.
+ * User may choose to implement it (eg. send request to master),
+ * or leave unimplemented.
+ *
+ * SRQ is issued when an event enabled in the status registers (namely SRE) occurs.
+ * See the SCPI spec for details.
+ */
+extern __attribute__((weak)) void scpi_user_SRQ(void);

@@ -46,8 +46,8 @@ static void builtin_TSTq(const SCPI_argval_t *args)
 {
 	(void)args;
 
-	if (scpi_user_TSTq) {
-		scpi_user_TSTq();
+	if (scpi_user_TST) {
+		scpi_user_TST();
 	}
 }
 
@@ -56,7 +56,7 @@ static void builtin_IDNq(const SCPI_argval_t *args)
 {
 	(void)args;
 
-	scpi_send_string(scpi_device_identifier());
+	scpi_send_string(scpi_user_IDN());
 }
 
 

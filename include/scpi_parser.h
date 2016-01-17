@@ -61,10 +61,10 @@ typedef struct {
 
 // ---------------- USER CONFIG ----------------
 
-// Zero terminated command struct array - must be defined.
+/** Zero terminated command struct array - must be defined. */
 extern const SCPI_command_t scpi_commands[];
 
-// provided by scpi_builtins.h
+/** Built-in SCPI commands, provided by scpi_builtins.h */
 extern const SCPI_command_t scpi_commands_builtin[];
 
 /** Send a byte to master (may be buffered) */

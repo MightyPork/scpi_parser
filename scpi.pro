@@ -23,7 +23,8 @@ DISTFILES += \
 	.gitignore \
 	LICENSE \
 	README.md \
-	Makefile
+	Makefile \
+    example/Makefile
 
 HEADERS += \
 	source/scpi_parser.h \
